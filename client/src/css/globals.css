@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Hotel Management Theme */
+:root {
+  --hotel-primary: #1a3a52;      /* Deep Navy Blue */
+  --hotel-secondary: #d4af37;    /* Luxury Gold */
+  --hotel-accent: #8b7355;       /* Warm Bronze */
+  --hotel-light: #f5f1e8;        /* Soft Cream */
+  --hotel-border: #c4b5a0;       /* Taupe Border */
+}
+
+body {
+  background: linear-gradient(135deg, #f5f1e8 0%, #faf8f4 100%);
+  color: #1a3a52;
+}
+
+/* Custom Hotel Theme Classes */
+.hotel-primary-bg {
+  background-color: var(--hotel-primary);
+}
+
+.hotel-secondary-bg {
+  background-color: var(--hotel-secondary);
+}
+
+.hotel-accent-bg {
+  background-color: var(--hotel-accent);
+}
+
+.hotel-light-bg {
+  background-color: var(--hotel-light);
+}
+
+.hotel-gradient {
+  background: linear-gradient(135deg, var(--hotel-primary) 0%, #2d5a7b 100%);
+}  
