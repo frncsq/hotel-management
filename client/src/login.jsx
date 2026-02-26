@@ -43,67 +43,64 @@ function Login() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-yellow-50 py-10 px-3 sm:px-5 lg:px-7">
-            <div className="max-w-sm w-full bg-white shadow-2xl rounded-xl overflow-hidden border border-yellow-200">
-                <div className="h-1 hotel-gradient"></div>
-				<div className="p-6 md:p-8">
-					<h2 className="text-3xl font-bold mb-2 text-center" style={{color: '#1a3a52'}}>Welcome</h2>
-					<h3 className="text-sm font-medium mb-6 text-center" style={{color: '#8b7355'}}>Sign in to your hotel account</h3>
+		<div className="haunted-background min-h-screen flex items-center justify-center py-10 px-3 sm:px-5 lg:px-7">
+            <div className="haunted-card max-w-sm w-full bg-gray-900 rounded-xl overflow-hidden">
+                <div className="h-1 bg-gradient-to-r from-red-900 via-black to-red-900"></div>
+				<div className="p-6 md:p-8 relative z-10">
+					<h2 className="haunted-title text-4xl mb-2 text-center">🦇 TRANSYLVANIA 🦇</h2>
+					<h3 className="haunted-subtitle text-sm font-medium mb-6 text-center">Enter the Dark Domain</h3>
 					{message && (
-						<div className={`mb-6 p-4 rounded-lg text-center font-medium ${
+						<div className={`haunted-message mb-6 p-4 rounded-lg text-center font-medium ${
 							messageType === 'success' 
-								? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-								: 'bg-red-100 text-red-800 border border-red-300'
+								? 'bg-green-900 text-green-200 border border-green-700' 
+								: 'bg-red-900 text-red-200 border border-red-700'
 						}`}>
 							{message}
 						</div>
 					)}
 					<form className="space-y-4">
-						<div>
-							<label className="block text-sm font-semibold" style={{color: '#1a3a52'}}>Username</label>
+						<div className="haunted-form-group">
+							<label className="haunted-label block text-sm font-semibold mb-1">🧛 Creature Name</label>
 							<input type="text" 
 							value={username} 
-							onChange={(e) => setUsername(e.target.value)} required 
-							placeholder='Enter your username'
-							className="mt-1 block w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2 transition"
-							style={{borderColor: '#d4af37', color: '#1a3a52'}}
-							onFocus={(e) => e.target.style.borderColor = '#d4af37'} />
+							onChange={(e) => setUsername(e.target.value)} 
+							required 
+							placeholder='Enter your vampiric identity'
+							className="haunted-input mt-1 block w-full px-4 py-2 rounded-lg focus:outline-none transition" />
 						</div>
 
-						<div>
-							<label className="block text-sm font-semibold" style={{color: '#1a3a52'}}>Password</label>
+						<div className="haunted-form-group">
+							<label className="haunted-label block text-sm font-semibold mb-1">🔐 Unholy Secret</label>
 							<input type="password" 
 							value ={password}
-							onChange={(e) => setPassword(e.target.value)} required
-							placeholder='Enter your password'
-							className="mt-1 block w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2 transition"
-							style={{borderColor: '#d4af37', color: '#1a3a52'}}
-							onFocus={(e) => e.target.style.borderColor = '#d4af37'} />
+							onChange={(e) => setPassword(e.target.value)} 
+							required
+							placeholder='Speak your dark incantation'
+							className="haunted-input mt-1 block w-full px-4 py-2 rounded-lg focus:outline-none transition" />
 						</div>
 
-						<div className="flex items-center justify-between text-sm">
+						<div className="haunted-form-group flex items-center justify-between text-sm">
 							<label className="flex items-center">
-								<input type="checkbox" className="h-4 w-4 rounded" style={{accentColor: '#d4af37'}} />
-								<span className="ml-2" style={{color: '#8b7355'}}>Remember me</span>
+								<input type="checkbox" className="h-4 w-4 rounded" style={{accentColor: '#ff6b6b'}} />
+								<span className="ml-2 text-gray-300">Haunt this device</span>
 							</label>
-							<a href="#" className="hover:underline transition" style={{color: '#d4af37'}}>Forgot password?</a>
+							<a href="#" className="haunted-link hover:underline">Curse forgotten?</a>
 						</div>
 
-						<div>
-							<button type="button" onClick={handleLogin} className="w-full py-2 px-4 text-white rounded-lg hover:shadow-lg transition font-semibold" style={{backgroundColor: '#1a3a52'}}>Sign in</button>
+						<div className="haunted-form-group">
+							<button type="button" onClick={handleLogin} className="haunted-button w-full py-3 px-4 rounded-lg font-semibold">Enter the Castle</button>
 						</div>
 					</form>
 
-					<div className="mt-6 text-center">
-						<p className="text-sm" style={{color: '#8b7355'}}>
-							Don't have an account?{" "}
+					<div className="haunted-form-group mt-6 text-center">
+						<p className="text-sm text-gray-400">
+							Not a resident of darkness?{" "}
 							<button
 								type="button"
 								onClick={() => navigate('/register')}
-								className="hover:underline font-semibold bg-none border-none cursor-pointer transition"
-								style={{color: '#d4af37'}}
+								className="haunted-link font-semibold bg-none border-none cursor-pointer"
 							>
-								Create account
+								Join the Undead
 							</button>
 						</p>
 					</div>
