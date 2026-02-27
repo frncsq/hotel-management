@@ -5,697 +5,555 @@ import { useNavigate } from "react-router-dom"
 
 
 function Home() {
-    const [lists, setLists] = useState([])
-    const [selectedList, setSelectedList] = useState(null)
+    const [rooms, setRooms] = useState([])
     const [loading, setLoading] = useState(true)
-    const [showAddForm, setShowAddForm] = useState(false)
-    const [newTitle, setNewTitle] = useState("")
-    const [editingTitle, setEditingTitle] = useState("")
-    const [isEditing, setIsEditing] = useState(false)
     const [error, setError] = useState("")
+    const [searchTerm, setSearchTerm] = useState("")
 
+    // Filter states
+    const [filters, setFilters] = useState({
+        roomType: "all",
+        priceRange: [0, 500],
+        availability: "all",
+        amenities: []
+    })
 
-    const [tasksByList, setTasksByList] = useState({})
-    const [showAddTaskForm, setShowAddTaskForm] = useState(false)
-    const [newTask, setNewTask] = useState({ title: "", description: "", status: "pending" })
-    const [editingTask, setEditingTask] = useState(null)
+    // Sidebar open/close for mobile
+    const [showFilters, setShowFilters] = useState(false)
+
+    // Room detail dialog state
+    const [selectedRoom, setSelectedRoom] = useState(null)
+    const [showDetailDialog, setShowDetailDialog] = useState(false)
 
     const API_URL = import.meta.env.VITE_API_URL
     const navigate = useNavigate()
 
     useEffect(() => {
-        fetchLists()
+        fetchRooms()
     }, [])
 
-    const fetchLists = async () => {
+    // Fetch rooms from API
+    const fetchRooms = async () => {
         try {
             setLoading(true)
             setError("")
-            const response = await axios.get(`${API_URL}/get-list`)
+            // Replace with your actual API endpoint
+            const response = await axios.get(`${API_URL}/rooms`)
             if (response.data.success) {
-                const fetchedLists = response.data.list || []
-                setLists(fetchedLists)
-
-                // Load items for each list so counters are in sync with backend
-                fetchedLists.forEach((list) => {
-                    fetchItemsForList(list.id)
-                })
+                setRooms(response.data.rooms || [])
+            } else {
+                // Mock data if API fails
+                setRooms(getMockRooms())
             }
         } catch (error) {
-            console.error("Error fetching lists:", error)
-            setError("Failed to load lists")
+            console.error("Error fetching rooms:", error)
+            // Use mock data as fallback
+            setRooms(getMockRooms())
         } finally {
             setLoading(false)
         }
     }
 
-    const fetchItemsForList = async (listId) => {
-        if (!listId) return
+    // Mock data for demonstration
+    const getMockRooms = () => [
+        { id: 1, roomNumber: "101", type: "Single", price: 80, availability: "available", amenities: ["WiFi", "AC", "TV"] },
+        { id: 2, roomNumber: "102", type: "Double", price: 120, availability: "available", amenities: ["WiFi", "AC", "TV", "Minibar"] },
+        { id: 3, roomNumber: "103", type: "Suite", price: 250, availability: "booked", amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi"] },
+        { id: 4, roomNumber: "201", type: "Single", price: 85, availability: "available", amenities: ["WiFi", "AC", "TV"] },
+        { id: 5, roomNumber: "202", type: "Double", price: 150, availability: "available", amenities: ["WiFi", "AC", "TV", "Balcony"] },
+        { id: 6, roomNumber: "203", type: "Suite", price: 300, availability: "available", amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi", "Balcony"] },
+    ]
 
-        try {
-            const response = await axios.get(`${API_URL}/get-items/${listId}`)
-            if (response.data.success) {
-                const items = response.data.items || []
-                setTasksByList((prev) => ({
-                    ...prev,
-                    [listId]: items
-                }))
-            }
-        } catch (error) {
-            console.error("Error fetching items for list:", listId, error)
+    // Filter rooms based on search and filters
+    const filteredRooms = rooms.filter((room) => {
+        // Search term filter
+        if (searchTerm && !room.roomNumber.includes(searchTerm) && !room.type.toLowerCase().includes(searchTerm.toLowerCase())) {
+            return false
         }
+
+        // Room type filter
+        if (filters.roomType !== "all" && room.type !== filters.roomType) {
+            return false
+        }
+
+        // Price range filter
+        if (room.price < filters.priceRange[0] || room.price > filters.priceRange[1]) {
+            return false
+        }
+
+        // Availability filter
+        if (filters.availability !== "all" && room.availability !== filters.availability) {
+            return false
+        }
+
+        // Amenities filter
+        if (filters.amenities.length > 0) {
+            const hasAllAmenities = filters.amenities.every((amenity) =>
+                room.amenities?.includes(amenity)
+            )
+            if (!hasAllAmenities) return false
+        }
+
+        return true
+    })
+
+    // Get unique values for filter options
+    const roomTypes = ["Single", "Double", "Suite", "Deluxe"]
+    const amenitiesList = ["WiFi", "AC", "TV", "Minibar", "Balcony", "Jacuzzi", "Pool", "Gym"]
+
+    // Toggle amenity filter
+    const toggleAmenity = (amenity) => {
+        setFilters((prev) => ({
+            ...prev,
+            amenities: prev.amenities.includes(amenity)
+                ? prev.amenities.filter((a) => a !== amenity)
+                : [...prev.amenities, amenity]
+        }))
     }
 
-    const handleAddList = async () => {
-        if (!newTitle.trim()) {
-            setError("Please enter a title")
-            return
-        }
-
-        try {
-            setError("")
-            const response = await axios.post(`${API_URL}/add-list`, {
-                listTitle: newTitle
-            })
-            if (response.data.success) {
-                setNewTitle("")
-                setShowAddForm(false)
-                fetchLists()
-            }
-        } catch (error) {
-            console.error("Error adding list:", error)
-            setError("Failed to add list")
-        }
+    // Reset all filters
+    const resetFilters = () => {
+        setFilters({
+            roomType: "all",
+            priceRange: [0, 500],
+            availability: "all",
+            amenities: []
+        })
+        setSearchTerm("")
     }
 
-    const handleEditList = async () => {
-        if (!editingTitle.trim() || !selectedList) {
-            setError("Please enter a title")
-            return
-        }
-
-        try {
-            setError("")
-            const response = await axios.post(`${API_URL}/edit-list`, {
-                listTitle: editingTitle,
-                id: selectedList.id
-            })
-            if (response.data.success) {
-                setIsEditing(false)
-                fetchLists()
-                setSelectedList(null)
-            }
-        } catch (error) {
-            console.error("Error editing list:", error)
-            setError("Failed to edit list")
-        }
+    // Handle room booking
+    const handleBookRoom = (roomId) => {
+        navigate(`/bookings?roomId=${roomId}`)
     }
 
-    const handleDeleteList = async () => {
-        if (!selectedList) return
-
-        if (!window.confirm(`Delete "${selectedList.title}"?`)) return
-
-        try {
-            setError("")
-            const response = await axios.post(`${API_URL}/delete-list`, {
-                listTitle: selectedList.title
-            })
-            if (response.data.success) {
-                // Remove any cached tasks for this list as well
-                setTasksByList((prev) => {
-                    const next = { ...prev }
-                    delete next[selectedList.id]
-                    return next
-                })
-                setSelectedList(null)
-                fetchLists()
-            }
-        } catch (error) {
-            console.error("Error deleting list:", error)
-            setError("Failed to delete list")
-        }
-    }
-
-    const handleSelectList = (list) => {
-        setSelectedList(list)
-        setEditingTitle(list.title)
-        setIsEditing(false)
-        setShowAddTaskForm(false)
-        setEditingTask(null)
-        // Ensure tasks for this list are loaded from backend
-        fetchItemsForList(list.id)
-    }
-
-    const handleBackToLists = () => {
-        setSelectedList(null)
-        setIsEditing(false)
-        setEditingTitle("")
-        setShowAddTaskForm(false)
-        setEditingTask(null)
-    }
-
-    // --- Task handlers ---
-    const selectedListTasks = selectedList ? tasksByList[selectedList.id] || [] : []
-
-    const handleAddTask = async () => {
-        if (!selectedList || !newTask.title.trim()) return
-        if (!newTask.description.trim()) {
-            setError("Description is required")
-            return
-        }
-        setError("")
-
-        try {
-            await axios.post(`${API_URL}/add-item`, {
-                list_id: selectedList.id,
-                title: newTask.title.trim(),
-                description: newTask.description.trim(),
-                status: "pending"
-            })
-
-            setNewTask({ title: "", description: "", status: "pending" })
-            setShowAddTaskForm(false)
-
-            // Refresh tasks for this list from backend
-            fetchItemsForList(selectedList.id)
-        } catch (error) {
-            console.error("Error adding task:", error)
-            setError("Failed to add task")
-        }
-    }
-
-    const handleToggleTaskStatus = async (taskId) => {
-        if (!selectedList) return
-
-        const tasksForList = tasksByList[selectedList.id] || []
-        const task = tasksForList.find((t) => t.id === taskId)
-        if (!task) return
-
-        const newStatus = task.status === "completed" ? "pending" : "completed"
-
-        try {
-            await axios.post(`${API_URL}/edit-item`, {
-                id: task.id,
-                title: task.title,
-                description: task.description,
-                status: newStatus
-            })
-
-            fetchItemsForList(selectedList.id)
-        } catch (error) {
-            console.error("Error updating task status:", error)
-            setError("Failed to update task")
-        }
-    }
-
-    const handleDeleteTask = async (taskId) => {
-        if (!selectedList) return
-
-        const tasksForList = tasksByList[selectedList.id] || []
-        const task = tasksForList.find((t) => t.id === taskId)
-        
-        if (!window.confirm(`Delete "${task?.title}"?`)) return
-
-        try {
-            await axios.post(`${API_URL}/delete-item`, { id: taskId })
-            fetchItemsForList(selectedList.id)
-        } catch (error) {
-            console.error("Error deleting task:", error)
-            setError("Failed to delete task")
-        }
-    }
-
-    const handleStartEditTask = (task) => {
-        setEditingTask({ ...task })
-        setShowAddTaskForm(false)
-    }
-
-    const handleSaveEditTask = async () => {
-        if (!editingTask || !editingTask.title.trim()) return
-        const desc = (editingTask.description ?? "").trim()
-        if (!desc) {
-            setError("Description is required")
-            return
-        }
-        setError("")
-
-        try {
-            await axios.post(`${API_URL}/edit-item`, {
-                id: editingTask.id,
-                title: editingTask.title.trim(),
-                description: (editingTask.description || "").trim(),
-                status: editingTask.status || "pending"
-            })
-
-            setEditingTask(null)
-            if (selectedList) {
-                fetchItemsForList(selectedList.id)
-            }
-        } catch (error) {
-            console.error("Error saving task:", error)
-            setError("Failed to save task")
-        }
+    // Handle room details dialog
+    const handleRoomDetails = (room) => {
+        setSelectedRoom(room)
+        setShowDetailDialog(true)
     }
 
     if (loading) {
         return (
             <>
                 <Header />
-                <div className="flex h-screen items-center justify-center bg-gradient-to-br from-amber-50 to-yellow-50">
-                    <p className="text-lg" style={{color: '#d4af37'}}>Loading...</p>
+                <div className="flex h-screen items-center justify-center" style={{background: 'linear-gradient(135deg, #0f0f1e 0%, #1a0a2e 50%, #16213e 100%)'}}>
+                    <p className="text-lg" style={{color: '#ff6b6b'}}>Loading rooms...</p>
                 </div>
             </>
         )
     }
-    
-    
 
-    // --- First screen: My To-Do Lists ---
-    if (!selectedList) {
-        return (
-            <>
-                <Header />
-                <main className="min-h-screen bg-gradient-to-br from-amber-50 to-yellow-50">
-                    <div className="max-w-5xl mx-auto px-4 py-10">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                            <div>
-                                <h1 className="text-4xl font-bold" style={{color: '#1a3a52'}}>Hotel Management</h1>
-                                <p className="mt-1 text-sm" style={{color: '#8b7355'}}>
-                                    Manage all hotel operations and tasks in one place.
-                                </p>
-                            </div>
-
-                            <button
-                                onClick={() => setShowAddForm((prev) => !prev)}
-                                className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all"
-                                style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                            >
-                                <span className="mr-2 text-lg leading-none">+</span>
-                                New list
-                            </button>
-                        </div>
-
-                        {error && (
-                            <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-                                {error}
-                            </div>
-                        )}
-
-                        {showAddForm && (
-                            <div className="mb-6 rounded-2xl border-2 bg-white p-4 shadow-lg" style={{borderColor: '#d4af37'}}>
-                                <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{color: '#8b7355'}}>
-                                    List title
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newTitle}
-                                    onChange={(e) => setNewTitle(e.target.value)}
-                                    placeholder="e.g. Room Bookings, Reservations"
-                                    className="w-full rounded-xl border-2 px-3 py-2 text-sm placeholder-opacity-50 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition"
-                                    style={{borderColor: '#d4af37', color: '#1a3a52', '--tw-ring-color': '#d4af37'}}
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === "Enter" && handleAddList()}
-                                />
-                                <div className="mt-3 flex gap-2 justify-end">
-                                    <button
-                                        onClick={() => {
-                                            setShowAddForm(false)
-                                            setNewTitle("")
-                                        }}
-                                        className="rounded-xl px-4 py-2 text-sm font-medium border-2 transition"
-                                        style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handleAddList}
-                                        className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-md hover:shadow-lg transition"
-                                        style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                    >
-                                        Create list
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {lists.length === 0 ? (
-                            <div className="mt-16 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-white px-6 py-12 text-center shadow-sm" style={{borderColor: '#d4af37', color: '#8b7355'}}>
-                                <p className="text-sm">
-                                    You don&apos;t have any lists yet. Start by creating your first management list.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                                {lists.map((list) => {
-                                    const itemCount = (tasksByList[list.id] || []).length
-                                    const countLabel = `${itemCount} item${itemCount === 1 ? "" : "s"}`
-
-                                    return (
-                                        <button
-                                            key={list.id}
-                                            onClick={() => handleSelectList(list)}
-                                            className="group flex flex-col items-start rounded-3xl border-2 bg-white px-5 py-5 text-left shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                                            style={{borderColor: '#e8d7c3'}}
-                                        >
-                                            <div className="mb-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium" style={{backgroundColor: '#f5f1e8', color: '#8b7355'}}>
-                                                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                                                {list.status || "pending"}
-                                            </div>
-                                            <h2 className="text-base font-semibold truncate mb-1" style={{color: '#1a3a52'}}>
-                                                {list.title}
-                                            </h2>
-                                            <p className="text-xs mb-4 line-clamp-2" style={{color: '#8b7355'}}>
-                                                {/* Show description when your API provides it */}
-                                                {list.description || "Tap to see and manage the tasks in this list."}
-                                            </p>
-                                            <div className="mt-auto flex w-full items-center justify-between text-xs" style={{color: '#8b7355'}}>
-                                                <span className="font-medium">{countLabel}</span>
-                                                <span className="inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{color: '#d4af37'}}>
-                                                    View tasks
-                                                    <span className="text-sm">
-                                                        →
-                                                    </span>
-                                                </span>
-                                            </div>
-                                        </button>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </main>
-            </>
-        )
-    }
-
-    // --- Second screen: single list with its tasks ---
     return (
         <>
             <Header />
-            <main className="min-h-screen bg-gradient-to-br from-amber-50 to-yellow-50">
-                <div className="max-w-3xl mx-auto px-4 py-8">
-                    <button
-                        onClick={handleBackToLists}
-                        className="mb-6 inline-flex items-center text-sm font-medium transition hover:opacity-80"
-                        style={{color: '#d4af37'}}
-                    >
-                        <span className="mr-2 text-lg leading-none">←</span>
-                        Back to lists
-                    </button>
+            <main className="min-h-screen" style={{background: 'linear-gradient(135deg, #0f0f1e 0%, #1a0a2e 50%, #16213e 100%)'}}>
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    {/* Header */}
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold mb-2 haunted-title">Available Rooms</h1>
+                        <p className="text-sm" style={{color: '#c0c0c0', textShadow: '0 0 10px rgba(255, 107, 107, 0.3)'}}>
+                            Browse and book our haunted chambers
+                        </p>
+                    </div>
 
-                    <div className="rounded-3xl bg-white px-6 py-6 shadow-md border-2" style={{borderColor: '#e8d7c3'}}>
-                        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="flex-1">
-                                {isEditing ? (
+                    {error && (
+                        <div className="mb-4 rounded-lg border px-4 py-3 text-sm shadow-sm" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b'}}>
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Sidebar Filters */}
+                        <aside className={`lg:w-64 flex-shrink-0 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                            <div className="rounded-2xl border-2 p-6 shadow-md" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-lg font-bold" style={{color: '#d0d0d0'}}>Filters</h2>
+                                    <button
+                                        onClick={() => setShowFilters(false)}
+                                        className="lg:hidden text-2xl text-gray-400"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Search Bar */}
+                                <div className="mb-6">
+                                    <label className="block text-xs font-medium uppercase tracking-wide mb-2 haunted-label">
+                                        Search
+                                    </label>
                                     <input
                                         type="text"
-                                        value={editingTitle}
-                                        onChange={(e) => setEditingTitle(e.target.value)}
-                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xl font-semibold text-slate-900 focus:border-pink-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-200"
-                                        autoFocus
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Room number or type..."
+                                        className="w-full rounded-xl border-2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition haunted-input"
                                     />
-                                ) : (
-                                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                                        {selectedList?.title}
-                                    </h1>
-                                )}
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {selectedList?.description ||
-                                        "Review today’s tasks, check off what’s done, and keep track of what’s next."}
+                                </div>
+
+                                {/* Room Type Filter */}
+                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
+                                        Room Type
+                                    </label>
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={() => setFilters({...filters, roomType: "all"})}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                filters.roomType === "all"
+                                                    ? "font-semibold text-white shadow-md"
+                                                    : "text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            style={{backgroundColor: filters.roomType === "all" ? '#8b0000' : 'transparent', color: filters.roomType === "all" ? '#fff' : '#c0c0c0'}}
+                                        >
+                                            All Types
+                                        </button>
+                                        {roomTypes.map((type) => (
+                                            <button
+                                                key={type}
+                                                onClick={() => setFilters({...filters, roomType: type})}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                    filters.roomType === type
+                                                        ? "font-semibold text-white shadow-md"
+                                                        : "text-gray-300 hover:bg-gray-700"
+                                                }`}
+                                                style={{backgroundColor: filters.roomType === type ? '#8b0000' : 'transparent', color: filters.roomType === type ? '#fff' : '#c0c0c0'}}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Price Range Filter */}
+                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
+                                        Price Range
+                                    </label>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="500"
+                                                value={filters.priceRange[1]}
+                                                onChange={(e) => 
+                                                    setFilters({...filters, priceRange: [filters.priceRange[0], parseInt(e.target.value)]})
+                                                }
+                                                className="w-full"
+                                                style={{accentColor: '#8b0000'}}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-xs" style={{color: '#c0c0c0'}}>
+                                            <span>${filters.priceRange[0]}</span>
+                                            <span>${filters.priceRange[1]}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Availability Filter */}
+                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
+                                        Availability
+                                    </label>
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={() => setFilters({...filters, availability: "all"})}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                filters.availability === "all"
+                                                    ? "font-semibold text-white shadow-md"
+                                                    : "text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            style={{backgroundColor: filters.availability === "all" ? '#8b0000' : 'transparent', color: filters.availability === "all" ? '#fff' : '#c0c0c0'}}
+                                        >
+                                            All
+                                        </button>
+                                        <button
+                                            onClick={() => setFilters({...filters, availability: "available"})}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                filters.availability === "available"
+                                                    ? "font-semibold text-white shadow-md"
+                                                    : "text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            style={{backgroundColor: filters.availability === "available" ? '#8b0000' : 'transparent', color: filters.availability === "available" ? '#fff' : '#c0c0c0'}}
+                                        >
+                                            Available
+                                        </button>
+                                        <button
+                                            onClick={() => setFilters({...filters, availability: "booked"})}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                filters.availability === "booked"
+                                                    ? "font-semibold text-white shadow-md"
+                                                    : "text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            style={{backgroundColor: filters.availability === "booked" ? '#8b0000' : 'transparent', color: filters.availability === "booked" ? '#fff' : '#c0c0c0'}}
+                                        >
+                                            Booked
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Amenities Filter */}
+                                <div className="mb-6">
+                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
+                                        Amenities
+                                    </label>
+                                    <div className="space-y-2">
+                                        {amenitiesList.map((amenity) => (
+                                            <label key={amenity} className="flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.amenities.includes(amenity)}
+                                                    onChange={() => toggleAmenity(amenity)}
+                                                    className="rounded"
+                                                    style={{accentColor: '#8b0000'}}
+                                                />
+                                                <span className="ml-2 text-sm" style={{color: '#c0c0c0'}}>{amenity}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Reset Filters Button */}
+                                <button
+                                    onClick={resetFilters}
+                                    className="w-full rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
+                                    style={{backgroundColor: '#8b0000'}}
+                                >
+                                    Reset Filters
+                                </button>
+                            </div>
+                        </aside>
+
+                        {/* Main Content */}
+                        <div className="flex-1">
+                            {/* Mobile Filter Toggle */}
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="lg:hidden mb-4 inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-md"
+                                style={{backgroundColor: '#8b0000'}}
+                            >
+                                <span className="mr-2">🔍</span>
+                                {showFilters ? "Hide Filters" : "Show Filters"}
+                            </button>
+
+                            {/* Results Count */}
+                            <div className="mb-6 flex items-center justify-between">
+                                <p className="text-sm" style={{color: '#c0c0c0'}}>
+                                    Showing <span className="font-semibold" style={{color: '#ff6b6b'}}>{filteredRooms.length}</span> of <span className="font-semibold" style={{color: '#ff6b6b'}}>{rooms.length}</span> rooms
                                 </p>
                             </div>
 
-                            <div className="flex gap-2">
-                                {isEditing ? (
-                                    <>
-                                        <button
-                                            onClick={handleEditList}
-                                            className="rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
-                                            style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Save
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setIsEditing(false)
-                                                setEditingTitle(selectedList?.title || "")
-                                            }}
-                                            className="rounded-xl border-2 bg-white px-3 py-2 text-xs font-medium transition"
-                                            style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={() => setIsEditing(true)}
-                                            className="rounded-xl border-2 bg-white px-3 py-2 text-xs font-medium transition"
-                                            style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Rename
-                                        </button>
-                                        <button
-                                            onClick={handleDeleteList}
-                                            className="rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
-                                            style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Delete
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{color: '#1a3a52'}}>
-                                Tasks
-                            </h2>
-                            <span className="text-xs text-slate-500">
-                                {selectedListTasks.length} item
-                                {selectedListTasks.length === 1 ? "" : "s"}
-                            </span>
-                        </div>
-
-                        <div className="space-y-3">
-                            {selectedListTasks.length === 0 ? (
-                                <div className="rounded-2xl border-2 border-dashed px-4 py-6 text-center text-sm" style={{borderColor: '#d4af37', color: '#8b7355', backgroundColor: 'rgba(245, 241, 232, 0.5)'}}>
-                                    No tasks yet. Add your first task for this list.
+                            {/* Room Grid */}
+                            {filteredRooms.length === 0 ? (
+                                <div className="rounded-3xl border-2 border-dashed px-6 py-12 text-center shadow-sm" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)', color: '#c0c0c0'}}>
+                                    <p className="text-lg font-medium mb-2">No rooms found</p>
+                                    <p className="text-sm">Try adjusting your filters or search term</p>
+                                    <button
+                                        onClick={resetFilters}
+                                        className="mt-4 inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-md"
+                                        style={{backgroundColor: '#8b0000', color: '#fff'}}
+                                    >
+                                        Reset Filters
+                                    </button>
                                 </div>
                             ) : (
-                                <ul className="space-y-2">
-                                    {selectedListTasks.map((task) => {
-                                        const isCompleted = task.status === "completed"
-                                        const isEditingThis = editingTask && editingTask.id === task.id
-
-                                        return (
-                                            <li
-                                                key={task.id}
-                                                className="flex items-start justify-between gap-3 rounded-2xl border-2 px-4 py-3 shadow-md transition hover:shadow-lg"
-                                                style={{borderColor: '#e8d7c3', backgroundColor: '#ffffff'}}
+                                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                    {filteredRooms.map((room) => (
+                                        <div
+                                            key={room.id}
+                                            className="group flex flex-col rounded-3xl border-2 shadow-md transition-all hover:-translate-y-1 hover:shadow-lg overflow-hidden"
+                                            style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}
+                                        >
+                                            {/* Room Image Placeholder */}
+                                            <div
+                                                className="h-40 flex items-center justify-center"
+                                                style={{background: 'linear-gradient(135deg, #8b0000 0%, #4a0000 100%)'}}
                                             >
-                                                <div className="flex items-start gap-3">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isCompleted}
-                                                        onChange={() => handleToggleTaskStatus(task.id)}
-                                                        className="mt-1 h-4 w-4 rounded"
-                                                        style={{accentColor: '#d4af37'}}
-                                                    />
-                                                    <div>
-                                                        {isEditingThis ? (
-                                                            <>
-                                                                <input
-                                                                    type="text"
-                                                                    value={editingTask.title}
-                                                                    onChange={(e) =>
-                                                                        setEditingTask((prev) => ({
-                                                                            ...prev,
-                                                                            title: e.target.value
-                                                                        }))
-                                                                    }
-                                                                    className="mb-1 w-full rounded-xl border-2 bg-white px-2 py-1 text-sm font-medium focus:outline-none focus:ring-1"
-                                                                    style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                                                />
-                                                                <textarea
-                                                                    value={editingTask.description || ""}
-                                                                    onChange={(e) =>
-                                                                        setEditingTask((prev) => ({
-                                                                            ...prev,
-                                                                            description: e.target.value
-                                                                        }))
-                                                                    }
-                                                                    rows={2}
-                                                                    className="w-full rounded-xl border-2 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1"
-                                                                    style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                                                    placeholder="Description (required)"
-                                                                    required
-                                                                />
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <p
-                                                                    className={`text-sm font-medium ${
-                                                                        isCompleted
-                                                                            ? "line-through text-gray-400"
-                                                                            : "text-slate-800"
-                                                                    }`}
-                                                                    style={{color: isCompleted ? '#999' : '#1a3a52'}}
-                                                                >
-                                                                    {task.title}
-                                                                </p>
-                                                                {task.description && (
-                                                                    <p
-                                                                        className={`mt-0.5 text-xs ${
-                                                                            isCompleted
-                                                                                ? "text-gray-300"
-                                                                                : "text-slate-500"
-                                                                        }`}
-                                                                        style={{color: isCompleted ? '#bbb' : '#8b7355'}}
-                                                                    >
-                                                                        {task.description}
-                                                                    </p>
-                                                                )}
-                                                            </>
+                                                <span className="text-5xl font-bold" style={{color: '#ff6b6b'}}>
+                                                    {room.roomNumber}
+                                                </span>
+                                            </div>
+
+                                            {/* Room Details */}
+                                            <div className="flex flex-1 flex-col p-5">
+                                                <div className="mb-2 inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium" style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}>
+                                                    {room.type}
+                                                </div>
+
+                                                <h3 className="text-lg font-bold mb-1" style={{color: '#d0d0d0'}}>
+                                                    Room {room.roomNumber}
+                                                </h3>
+
+                                                <div className="mb-4 flex items-baseline gap-1">
+                                                    <span className="text-2xl font-bold" style={{color: '#ff6b6b'}}>
+                                                        ${room.price}
+                                                    </span>
+                                                    <span className="text-xs" style={{color: '#c0c0c0'}}>per night</span>
+                                                </div>
+
+                                                {/* Availability Badge */}
+                                                <div className="mb-4">
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                                                            room.availability === "available"
+                                                                ? "bg-emerald-900 text-emerald-200"
+                                                                : "bg-red-900 text-red-200"
+                                                        }`}
+                                                    >
+                                                        <span className={`mr-1.5 h-2 w-2 rounded-full ${room.availability === "available" ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                                                        {room.availability === "available" ? "Available" : "Booked"}
+                                                    </span>
+                                                </div>
+
+                                                {/* Amenities */}
+                                                <div className="mb-4 flex-1">
+                                                    <p className="text-xs font-medium mb-2" style={{color: '#c0c0c0'}}>Amenities:</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {room.amenities?.slice(0, 3).map((amenity) => (
+                                                            <span
+                                                                key={amenity}
+                                                                className="text-xs rounded-full px-2 py-1"
+                                                                style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}
+                                                            >
+                                                                {amenity}
+                                                            </span>
+                                                        ))}
+                                                        {room.amenities && room.amenities.length > 3 && (
+                                                            <span className="text-xs rounded-full px-2 py-1" style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}>
+                                                                +{room.amenities.length - 3}
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-col items-end gap-1">
-                                                    {isEditingThis ? (
-                                                        <div className="flex gap-1">
-                                                            <button
-                                                                onClick={handleSaveEditTask}
-                                                                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-white hover:shadow-md"
-                                                                style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setEditingTask(null)}
-                                                                className="rounded-lg border-2 bg-white px-2 py-1 text-[11px] font-medium"
-                                                                style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex gap-1">
-                                                            <button
-                                                                onClick={() => handleStartEditTask(task)}
-                                                                className="rounded-lg border-2 bg-white px-2 py-1 text-[11px] font-medium"
-                                                                style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteTask(task.id)}
-                                                                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-white hover:shadow-md"
-                                                                style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    <span
-                                                        className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                                            isCompleted
-                                                                ? "bg-emerald-50 text-emerald-600"
-                                                                : "bg-amber-50 text-amber-700"
-                                                        }`}
+                                                {/* Action Buttons */}
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleBookRoom(room.id)}
+                                                        disabled={room.availability !== "available"}
+                                                        className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white`}
+                                                        style={{backgroundColor: room.availability === "available" ? '#8b0000' : '#666', color: '#fff'}}
                                                     >
-                                                        {isCompleted ? "Completed" : "Pending"}
-                                                    </span>
+                                                        {room.availability === "available" ? "Book Now" : "Unavailable"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRoomDetails(room)}
+                                                        className="flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition border-2"
+                                                        style={{borderColor: '#8b0000', color: '#ff6b6b'}}
+                                                    >
+                                                        Details
+                                                    </button>
                                                 </div>
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
-                            )}
-                        </div>
-
-                        {/* Add task form */}
-                        <div className="mt-6 border-t pt-4" style={{borderColor: '#e8d7c3'}}>
-                            {showAddTaskForm ? (
-                                <div className="rounded-2xl border-2 px-4 py-4" style={{borderColor: '#d4af37', backgroundColor: 'rgba(245, 241, 232, 0.3)'}}>
-                                    <div className="mb-2">
-                                        <label className="block text-xs font-medium mb-1" style={{color: '#8b7355'}}>
-                                            Task title
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={newTask.title}
-                                            onChange={(e) =>
-                                                setNewTask((prev) => ({
-                                                    ...prev,
-                                                    title: e.target.value
-                                                }))
-                                            }
-                                            className="w-full rounded-xl border-2 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1"
-                                            style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                            placeholder="e.g. Check Room Conditions"
-                                            autoFocus
-                                            onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="block text-xs font-medium mb-1" style={{color: '#8b7355'}}>
-                                            Description <span className="text-red-500">*</span>
-                                        </label>
-                                        <textarea
-                                            rows={2}
-                                            value={newTask.description}
-                                            onChange={(e) =>
-                                                setNewTask((prev) => ({
-                                                    ...prev,
-                                                    description: e.target.value
-                                                }))
-                                            }
-                                            className="w-full rounded-xl border-2 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1"
-                                            style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                            placeholder="Add details like location, time, or notes"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setShowAddTaskForm(false)
-                                                setNewTask({ title: "", description: "", status: "pending" })
-                                            }}
-                                            className="rounded-xl border-2 bg-white px-4 py-2 text-xs font-medium transition"
-                                            style={{borderColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleAddTask}
-                                            className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
-                                            style={{backgroundColor: '#d4af37', color: '#1a3a52'}}
-                                        >
-                                            Add task
-                                        </button>
-                                    </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setShowAddTaskForm(true)
-                                        setEditingTask(null)
-                                    }}
-                                    className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
-                                    style={{backgroundColor: '#1a3a52'}}
-                                >
-                                    <span className="mr-2 text-base leading-none">+</span>
-                                    Add task
-                                </button>
                             )}
                         </div>
                     </div>
                 </div>
             </main>
+
+            {/* Room Detail Dialog */}
+            {showDetailDialog && selectedRoom && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{backgroundColor: 'rgba(0, 0, 0, 0.8)'}}>
+                    <div className="relative w-full max-w-lg rounded-3xl border-2 overflow-hidden shadow-2xl scale-in" style={{borderColor: 'rgba(255, 107, 107, 0.8)', backgroundColor: 'rgba(20, 20, 40, 0.98)', boxShadow: '0 0 30px rgba(139, 0, 0, 0.5)', animation: 'fadeInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'}}>
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowDetailDialog(false)}
+                            className="absolute top-4 right-4 z-10 text-2xl text-gray-400 hover:text-red-400 transition duration-200 transform hover:scale-110"
+                        >
+                            ✕
+                        </button>
+
+                        {/* Header Section */}
+                        <div
+                            className="h-40 flex items-center justify-center relative"
+                            style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #8b0000 50%, #4a0000 100%)', boxShadow: 'inset 0 0 20px rgba(139, 0, 0, 0.6)'}}
+                        >
+                            <div className="text-center">
+                                <p className="text-sm uppercase tracking-wide" style={{color: '#c0c0c0'}}>Room</p>
+                                <p className="text-6xl font-bold" style={{color: '#ff6b6b'}}>{selectedRoom.roomNumber}</p>
+                            </div>
+                        </div>
+
+                        {/* Content Section */}
+                        <div className="p-8 max-h-96 overflow-y-auto" style={{background: 'linear-gradient(to bottom, rgba(20, 20, 40, 0.98), rgba(10, 10, 30, 0.98))'}}>
+                            {/* Title and Price */}
+                            <div className="mb-6 flex items-start justify-between">
+                                <div>
+                                    <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-3" style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}>
+                                        {selectedRoom.type}
+                                    </div>
+                                    <h1 className="text-3xl font-bold" style={{color: '#d0d0d0'}}>
+                                        {selectedRoom.type} Room {selectedRoom.roomNumber}
+                                    </h1>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-4xl font-bold" style={{color: '#ff6b6b'}}>
+                                        ${selectedRoom.price}
+                                    </p>
+                                    <p style={{color: '#c0c0c0'}}>per night</p>
+                                </div>
+                            </div>
+
+                            {/* Availability */}
+                            <div className="mb-6">
+                                <span
+                                    className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-medium ${
+                                        selectedRoom.availability === "available"
+                                            ? "bg-emerald-900 text-emerald-200"
+                                            : "bg-red-900 text-red-200"
+                                    }`}
+                                >
+                                    <span className={`mr-2 h-2 w-2 rounded-full ${selectedRoom.availability === "available" ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                                    {selectedRoom.availability === "available" ? "Available for Booking" : "Currently Booked"}
+                                </span>
+                            </div>
+
+                            {/* Amenities */}
+                            <div className="mb-6">
+                                <h2 className="text-lg font-semibold mb-3" style={{color: '#d0d0d0'}}>Amenities</h2>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {selectedRoom.amenities?.map((amenity) => (
+                                        <div
+                                            key={amenity}
+                                            className="rounded-lg px-3 py-2 flex items-center text-sm"
+                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.2)', borderLeft: '3px solid #8b0000'}}
+                                        >
+                                            <span style={{color: '#ff6b6b'}} className="mr-2">✓</span>
+                                            <span style={{color: '#c0c0c0'}}>{amenity}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 p-8 border-t" style={{borderTopColor: 'rgba(139, 0, 0, 0.3)'}}>
+                            <button
+                                onClick={() => {
+                                    setShowDetailDialog(false)
+                                    handleBookRoom(selectedRoom.id)
+                                }}
+                                disabled={selectedRoom.availability !== "available"}
+                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                                style={{backgroundColor: selectedRoom.availability === "available" ? '#8b0000' : '#666', color: '#fff'}}
+                            >
+                                {selectedRoom.availability === "available" ? "Book This Room" : "Room Unavailable"}
+                            </button>
+                            <button
+                                onClick={() => setShowDetailDialog(false)}
+                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition border-2"
+                                style={{borderColor: '#8b0000', color: '#ff6b6b'}}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }
