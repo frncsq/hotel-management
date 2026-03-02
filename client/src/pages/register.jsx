@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 function Register() {
 	const [name, setName] = useState('');
+	const [identity, setIdentity] = useState('');
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [confirm, setConfirm] = useState('');
@@ -67,10 +68,23 @@ function Register() {
 		// Cancel any ongoing speech
 		window.speechSynthesis.cancel();
 		
-		const utterance = new SpeechSynthesisUtterance(text);
-		utterance.rate = 0.9;
-		utterance.pitch = 0.8;
+		// Add zombie vocal effects to text
+		const zombieEffects = ['*grraahhh* ', '*moooooan* ', '*groaaaan* '];
+		const randomEffect = zombieEffects[Math.floor(Math.random() * zombieEffects.length)];
+		const zombieText = randomEffect + text;
+		
+		const utterance = new SpeechSynthesisUtterance(zombieText);
+		utterance.rate = 0.7;  // Slower, more deliberate zombie speech
+		utterance.pitch = 0.4;  // Much lower pitch for deep zombie voice
 		utterance.volume = 1;
+		
+		// Try to select a male voice for deeper zombie sound
+		const voices = window.speechSynthesis.getVoices();
+		const maleVoice = voices.find(voice => voice.name.includes('Male') || voice.name.includes('man'));
+		if (maleVoice) {
+			utterance.voice = maleVoice;
+		}
+		
 		window.speechSynthesis.speak(utterance);
 	};
 
@@ -96,7 +110,7 @@ function Register() {
 	}, [typingTimeout]);
 
 	const handleRegister = async () => {
-		if (!name || !username || !password || !confirm) {
+		if (!name || !identity || !username || !password || !confirm) {
 			setMessage('All fields are required');
 			setMessageType('error');
 			return;
@@ -105,6 +119,7 @@ function Register() {
 		try {
 			const response = await axios.post(`${API_URL}/register`, {
 				name: name,
+				identity: identity,
 				username: username,
 				password: password,
 				confirm: confirm
@@ -200,11 +215,32 @@ function Register() {
 						</div>
 						<div className="haunted-form-group">
 							<label className="haunted-label block text-sm font-semibold mb-1 flex items-center gap-2"><img src="/gif_whites_removed_strong.gif" alt="vampire" style={{width: '20px', height: '20px'}} /> Creature Identity</label>
+							<select 
+							value={identity} 
+							onChange={(e) => setIdentity(e.target.value)} 
+							required 
+							className="haunted-input mt-1 block w-full px-4 py-2 rounded-lg focus:outline-none transition">
+								<option value="">Select your creature type...</option>
+								<option value="zombie">Zombie</option>
+								<option value="vampire">Vampire</option>
+								<option value="mummy">Mummy</option>
+								<option value="werewolf">Werewolf</option>
+								<option value="ghost">Ghost</option>
+								<option value="frankenstein">Frankenstein's Monster</option>
+								<option value="witch">Witch</option>
+								<option value="banshee">Banshee</option>
+								<option value="skeleton">Skeleton</option>
+								<option value="demon">Demon</option>
+							</select>
+						</div>
+
+						<div className="haunted-form-group">
+							<label className="haunted-label block text-sm font-semibold mb-1 flex items-center gap-2"><img src="/gif_whites_removed_strong.gif" alt="vampire" style={{width: '20px', height: '20px'}} /> Username</label>
 							<input type="text" 
 							value={username} 
 							onChange={(e) => setUsername(e.target.value)} 
 							required 
-							placeholder='Your new vampire name'
+							placeholder='Choose your login name'
 							className="haunted-input mt-1 block w-full px-4 py-2 rounded-lg focus:outline-none transition" />
 						</div>
 
