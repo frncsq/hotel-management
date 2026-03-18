@@ -1,4 +1,4 @@
-import Header from "../components/header"
+﻿import Header from "../components/header"
 import { useState, useEffect } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
@@ -230,7 +230,10 @@ function Home() {
             <>
                 <Header />
                 <div className="flex h-screen items-center justify-center" style={{background: 'linear-gradient(135deg, #0f0f1e 0%, #1a0a2e 50%, #16213e 100%)'}}>
-                    <p className="text-lg" style={{color: '#ff6b6b'}}>Loading rooms...</p>
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 mb-4 border-4" style={{borderColor: 'rgba(139, 0, 0, 0.3)', borderTopColor: '#ff6b6b'}}></div>
+                        <p style={{color: '#c0c0c0'}}>Loading rooms...</p>
+                    </div>
                 </div>
             </>
         )
@@ -240,38 +243,41 @@ function Home() {
         <>
             <Header />
             <main className="min-h-screen" style={{background: 'linear-gradient(135deg, #0f0f1e 0%, #1a0a2e 50%, #16213e 100%)'}}>
-                <div className="max-w-7xl mx-auto px-4 py-8">
-                    {/* Header */}
-                    <div className="mb-8">
-                        <h1 className="text-4xl font-bold mb-2 haunted-title">Available Rooms</h1>
-                        <p className="text-sm" style={{color: '#c0c0c0', textShadow: '0 0 10px rgba(255, 107, 107, 0.3)'}}>
-                            Browse and book our haunted chambers
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    {/* Page Header */}
+                    <div className="mb-12 animate-slideInLeft">
+                        <h1 className="text-5xl font-bold mb-3 haunted-title" style={{color: '#ff6b6b', letterSpacing: '-0.02em'}}>
+                            Discover Our Rooms
+                        </h1>
+                        <p className="text-lg max-w-2xl" style={{color: 'rgba(255, 107, 107, 0.8)'}}>
+                            Explore our exquisite collection of premium accommodations, each designed for your comfort and luxury experience.
                         </p>
                     </div>
 
                     {/* Messages */}
                     {message && (
-                        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm shadow-sm flex items-center justify-between ${
+                        <div className={`mb-6 rounded-xl border px-5 py-4 text-sm shadow-lg flex items-center justify-between animate-slideDown transition-all ${
                             messageType === 'success' 
-                                ? 'border-green-600 bg-green-900/20 text-green-400' 
-                                : 'border-red-600 bg-red-900/20 text-red-400'
+                                ? 'border-green-500/30 bg-green-900/20 text-green-300' 
+                                : 'border-red-500/30 bg-red-900/20 text-red-300'
                         }`}>
                             <span>{message}</span>
                             <button
                                 onClick={() => setMessage("")}
-                                className="ml-4 text-lg hover:opacity-70"
+                                className="ml-4 text-lg hover:opacity-70 transition-opacity"
                             >
-                                ✕
+                                âœ•
                             </button>
                         </div>
                     )}
 
                     {error && (
-                        <div className="mb-4 rounded-lg border px-4 py-3 text-sm shadow-sm flex items-center justify-between" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b'}}>
+                        <div className="mb-6 rounded-xl border px-5 py-4 text-sm shadow-lg flex items-center justify-between animate-slideDown" 
+                            style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b'}}>
                             <span>{error} {retryCount > 0 && `(Attempt ${retryCount}/${MAX_RETRIES})`}</span>
                             <button
                                 onClick={handleRetry}
-                                className="ml-4 px-3 py-1 rounded text-xs font-semibold hover:bg-red-900 transition"
+                                className="ml-4 px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80 transition"
                                 style={{backgroundColor: '#8b0000', color: '#fff'}}
                             >
                                 Retry
@@ -279,88 +285,97 @@ function Home() {
                         </div>
                     )}
 
-                    <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex flex-col lg:flex-row gap-8">
                         {/* Sidebar Filters */}
-                        <aside className={`lg:w-64 flex-shrink-0 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-                            <div className="rounded-2xl border-2 p-6 shadow-md" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}>
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-lg font-bold" style={{color: '#d0d0d0'}}>Filters</h2>
+                        <aside className={`lg:w-72 flex-shrink-0 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                            <div className="rounded-2xl border-2 p-7 shadow-lg sticky top-28" 
+                                style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)', backdropFilter: 'blur(10px)'}}>
+                                <div className="flex items-center justify-between mb-7">
+                                    <h2 className="text-lg font-bold" style={{color: '#ff6b6b'}}>Search & Filter</h2>
                                     <button
                                         onClick={() => setShowFilters(false)}
-                                        className="lg:hidden text-2xl text-gray-400"
+                                        className="lg:hidden text-2xl opacity-60 hover:opacity-100 transition"
+                                        style={{color: '#ff6b6b'}}
                                     >
-                                        ✕
+                                        âœ•
                                     </button>
                                 </div>
 
                                 {/* Search Bar */}
-                                <div className="mb-6">
-                                    <label className="block text-xs font-medium uppercase tracking-wide mb-2 haunted-label">
-                                        Search
+                                <div className="mb-8">
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{color: '#ff6b6b'}}>
+                                        ðŸ” Search
                                     </label>
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Room number or type..."
-                                        className="w-full rounded-xl border-2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition haunted-input"
+                                        placeholder="Room number, type..."
+                                        className="w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all focus:outline-none"
+                                        style={{
+                                            borderColor: 'rgba(139, 0, 0, 0.4)',
+                                            backgroundColor: 'rgba(20, 20, 40, 0.8)',
+                                            color: '#c0c0c0'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#ff6b6b'
+                                            e.target.style.backgroundColor = 'rgba(20, 20, 40, 0.9)'
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(255, 107, 107, 0.1)'
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = 'rgba(139, 0, 0, 0.4)'
+                                            e.target.style.backgroundColor = 'rgba(20, 20, 40, 0.8)'
+                                            e.target.style.boxShadow = 'none'
+                                        }}
                                     />
                                 </div>
 
                                 {/* Room Type Filter */}
-                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
-                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
-                                        Room Type
+                                <div className="mb-8 pb-8 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-4" style={{color: '#ff6b6b'}}>
+                                        ðŸ›ï¸ Room Type
                                     </label>
                                     <div className="space-y-2">
-                                        <button
-                                            onClick={() => setFilters({...filters, roomType: "all"})}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                                                filters.roomType === "all"
-                                                    ? "font-semibold text-white shadow-md"
-                                                    : "text-gray-300 hover:bg-gray-700"
-                                            }`}
-                                            style={{backgroundColor: filters.roomType === "all" ? '#8b0000' : 'transparent', color: filters.roomType === "all" ? '#fff' : '#c0c0c0'}}
-                                        >
-                                            All Types
-                                        </button>
-                                        {roomTypes.map((type) => (
+                                        {["all", ...roomTypes].map((type) => (
                                             <button
                                                 key={type}
                                                 onClick={() => setFilters({...filters, roomType: type})}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                                                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                                                     filters.roomType === type
-                                                        ? "font-semibold text-white shadow-md"
-                                                        : "text-gray-300 hover:bg-gray-700"
+                                                        ? "shadow-md"
+                                                        : "hover:bg-opacity-50"
                                                 }`}
-                                                style={{backgroundColor: filters.roomType === type ? '#8b0000' : 'transparent', color: filters.roomType === type ? '#fff' : '#c0c0c0'}}
+                                                style={{
+                                                    backgroundColor: filters.roomType === type ? 'rgba(139, 0, 0, 0.2)' : 'transparent',
+                                                    color: filters.roomType === type ? '#ff6b6b' : '#c0c0c0',
+                                                    borderLeft: filters.roomType === type ? '3px solid #ff6b6b' : '3px solid transparent'
+                                                }}
                                             >
-                                                {type}
+                                                {type === "all" ? "All Types" : type}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Price Range Filter */}
-                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
-                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
-                                        Price Range
+                                <div className="mb-8 pb-8 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-4" style={{color: '#ff6b6b'}}>
+                                        ðŸ’° Price Range
                                     </label>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="500"
-                                                value={filters.priceRange[1]}
-                                                onChange={(e) => 
-                                                    setFilters({...filters, priceRange: [filters.priceRange[0], parseInt(e.target.value)]})
-                                                }
-                                                className="w-full"
-                                                style={{accentColor: '#8b0000'}}
-                                            />
-                                        </div>
-                                        <div className="flex justify-between text-xs" style={{color: '#c0c0c0'}}>
+                                    <div className="space-y-4">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="500"
+                                            value={filters.priceRange[1]}
+                                            onChange={(e) => 
+                                                setFilters({...filters, priceRange: [filters.priceRange[0], parseInt(e.target.value)]})
+                                            }
+                                            className="w-full"
+                                            style={{accentColor: '#d4af37'}}
+                                        />
+                                        <div className="flex justify-between text-sm font-semibold p-3 rounded-lg bg-opacity-20"
+                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}>
                                             <span>${filters.priceRange[0]}</span>
                                             <span>${filters.priceRange[1]}</span>
                                         </div>
@@ -368,63 +383,50 @@ function Home() {
                                 </div>
 
                                 {/* Availability Filter */}
-                                <div className="mb-6 pb-6 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
-                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
-                                        Availability
+                                <div className="mb-8 pb-8 border-b" style={{borderColor: 'rgba(139, 0, 0, 0.3)'}}>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-4" style={{color: '#ff6b6b'}}>
+                                        âœ“ Availability
                                     </label>
                                     <div className="space-y-2">
-                                        <button
-                                            onClick={() => setFilters({...filters, availability: "all"})}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                                                filters.availability === "all"
-                                                    ? "font-semibold text-white shadow-md"
-                                                    : "text-gray-300 hover:bg-gray-700"
-                                            }`}
-                                            style={{backgroundColor: filters.availability === "all" ? '#8b0000' : 'transparent', color: filters.availability === "all" ? '#fff' : '#c0c0c0'}}
-                                        >
-                                            All
-                                        </button>
-                                        <button
-                                            onClick={() => setFilters({...filters, availability: "available"})}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                                                filters.availability === "available"
-                                                    ? "font-semibold text-white shadow-md"
-                                                    : "text-gray-300 hover:bg-gray-700"
-                                            }`}
-                                            style={{backgroundColor: filters.availability === "available" ? '#8b0000' : 'transparent', color: filters.availability === "available" ? '#fff' : '#c0c0c0'}}
-                                        >
-                                            Available
-                                        </button>
-                                        <button
-                                            onClick={() => setFilters({...filters, availability: "booked"})}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                                                filters.availability === "booked"
-                                                    ? "font-semibold text-white shadow-md"
-                                                    : "text-gray-300 hover:bg-gray-700"
-                                            }`}
-                                            style={{backgroundColor: filters.availability === "booked" ? '#8b0000' : 'transparent', color: filters.availability === "booked" ? '#fff' : '#c0c0c0'}}
-                                        >
-                                            Booked
-                                        </button>
+                                        {["all", "available", "booked"].map((status) => (
+                                            <button
+                                                key={status}
+                                                onClick={() => setFilters({...filters, availability: status})}
+                                                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                                    filters.availability === status
+                                                        ? "shadow-md"
+                                                        : "hover:bg-opacity-50"
+                                                }`}
+                                                style={{
+                                                    backgroundColor: filters.availability === status ? 'rgba(139, 0, 0, 0.2)' : 'transparent',
+                                                    color: filters.availability === status ? '#ff6b6b' : '#c0c0c0',
+                                                    borderLeft: filters.availability === status ? '3px solid #ff6b6b' : '3px solid transparent'
+                                                }}
+                                            >
+                                                {status === "all" ? "All Rooms" : status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
                                 {/* Amenities Filter */}
-                                <div className="mb-6">
-                                    <label className="block text-xs font-medium uppercase tracking-wide mb-3 haunted-label">
-                                        Amenities
+                                <div className="mb-8">
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-4" style={{color: '#ff6b6b'}}>
+                                        â­ Amenities
                                     </label>
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         {amenitiesList.map((amenity) => (
-                                            <label key={amenity} className="flex items-center cursor-pointer">
+                                            <label key={amenity} className="flex items-center cursor-pointer group">
                                                 <input
                                                     type="checkbox"
                                                     checked={filters.amenities.includes(amenity)}
                                                     onChange={() => toggleAmenity(amenity)}
-                                                    className="rounded"
-                                                    style={{accentColor: '#8b0000'}}
+                                                    className="rounded transition-all"
+                                                    style={{accentColor: '#ff6b6b'}}
                                                 />
-                                                <span className="ml-2 text-sm" style={{color: '#c0c0c0'}}>{amenity}</span>
+                                                <span className="ml-3 text-sm font-medium group-hover:text-red-300 transition-colors" style={{color: '#c0c0c0'}}>
+                                                    {amenity}
+                                                </span>
                                             </label>
                                         ))}
                                     </div>
@@ -433,10 +435,10 @@ function Home() {
                                 {/* Reset Filters Button */}
                                 <button
                                     onClick={resetFilters}
-                                    className="w-full rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition"
-                                    style={{backgroundColor: '#8b0000'}}
+                                    className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                    style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)', color: '#fff'}}
                                 >
-                                    Reset Filters
+                                    Reset All Filters
                                 </button>
                             </div>
                         </aside>
@@ -446,154 +448,152 @@ function Home() {
                             {/* Mobile Filter Toggle */}
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className="lg:hidden mb-4 inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-md"
-                                style={{backgroundColor: '#8b0000'}}
+                                className="lg:hidden mb-6 inline-flex items-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                                style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)', color: '#fff'}}
                             >
-                                <span className="mr-2">🔍</span>
+                                <span className="mr-2">ðŸ”</span>
                                 {showFilters ? "Hide Filters" : "Show Filters"}
                             </button>
 
                             {/* Results Count */}
-                            <div className="mb-6 flex items-center justify-between">
-                                <p className="text-sm" style={{color: '#c0c0c0'}}>
-                                    Showing <span className="font-semibold" style={{color: '#ff6b6b'}}>{filteredRooms.length}</span> of <span className="font-semibold" style={{color: '#ff6b6b'}}>{rooms.length}</span> rooms
+                            <div className="mb-8">
+                                <p className="text-sm font-semibold" style={{color: 'rgba(255, 107, 107, 0.9)'}}>
+                                    Showing <span style={{color: '#ff6b6b'}}>{filteredRooms.length}</span> of <span style={{color: '#ff6b6b'}}>{rooms.length}</span> rooms
                                 </p>
                             </div>
 
                             {/* Room Grid */}
                             {filteredRooms.length === 0 ? (
-                                <div className="rounded-3xl border-2 border-dashed px-6 py-12 text-center shadow-sm" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)', color: '#c0c0c0'}}>
-                                    <p className="text-lg font-medium mb-2">No rooms found</p>
-                                    <p className="text-sm">Try adjusting your filters or search term</p>
+                                <div className="rounded-2xl border-2 border-dashed px-8 py-16 text-center shadow-md animate-slideDown"
+                                    style={{borderColor: 'rgba(139, 0, 0, 0.4)', backgroundColor: 'rgba(20, 20, 40, 0.8)'}}>
+                                    <p className="text-2xl font-bold mb-2" style={{color: '#ff6b6b'}}>No Rooms Found</p>
+                                    <p className="text-sm mb-6" style={{color: 'rgba(255, 107, 107, 0.7)'}}>
+                                        Try adjusting your filters or search criteria
+                                    </p>
                                     <button
                                         onClick={resetFilters}
-                                        className="mt-4 inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-md"
-                                        style={{backgroundColor: '#8b0000', color: '#fff'}}
+                                        className="inline-flex items-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                                        style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)', color: '#fff'}}
                                     >
                                         Reset Filters
                                     </button>
                                 </div>
                             ) : (
-                                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                    {filteredRooms.map((room) => (
+                                <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+                                    {filteredRooms.map((room, index) => (
                                         <div
                                             key={room.id}
-                                            className="group flex flex-col rounded-2xl border-2 shadow-md transition-all hover:-translate-y-1 hover:shadow-lg overflow-hidden"
-                                            style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}
-                                        >
+                                            className="group flex flex-col rounded-2xl border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 card-hover animate-slideInRight"
+                                            style={{
+                                                borderColor: 'rgba(139, 0, 0, 0.6)',
+                                                backgroundColor: 'rgba(20, 20, 40, 0.9)',
+                                                animationDelay: `${index * 50}ms`
+                                            }}>
                                             {/* Image with Badge Overlay */}
-                                            <div className="relative h-48 overflow-hidden bg-gradient-to-br from-red-900 to-red-950">
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="text-5xl font-bold" style={{color: '#ff6b6b'}}>
+                                            <div className="relative h-56 overflow-hidden bg-gradient-to-br from-red-900 to-red-950">
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity duration-300">
+                                                    <span className="text-6xl font-bold text-center" style={{color: '#ff6b6b', textShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'}}>
                                                         {room.roomNumber}
                                                     </span>
                                                 </div>
                                                 {/* Badge on top */}
-                                                <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold" style={{backgroundColor: 'rgba(255, 107, 107, 0.9)', color: '#fff'}}>
-                                                    ⭐ Best rated
+                                                <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg" 
+                                                    style={{backgroundColor: '#ff6b6b', color: '#fff'}}>
+                                                    â­ Premium
                                                 </div>
                                                 {/* Heart icon */}
-                                                <button className="absolute top-3 right-3 text-2xl bg-white rounded-full p-1 hover:scale-110 transition">
-                                                    ♡
+                                                <button className="absolute top-4 right-4 text-xl bg-white rounded-full p-2 hover:scale-110 transition-transform duration-300 shadow-lg opacity-0 group-hover:opacity-100"
+                                                    style={{color: '#ff6b6b'}}>
+                                                    â™¡
                                                 </button>
                                             </div>
 
                                             {/* Content Section */}
-                                            <div className="flex flex-1 flex-col p-4">
+                                            <div className="flex flex-1 flex-col p-6">
                                                 {/* Title and Type Badge */}
-                                                <div className="mb-2 flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                        <h3 className="text-sm font-bold mb-1" style={{color: '#d0d0d0'}}>
-                                                            Room {room.roomNumber}
-                                                        </h3>
-                                                        <div className="inline-flex items-center gap-1 mb-2">
-                                                            <span className="text-xs" style={{color: '#ff6b6b'}}>★★★</span>
-                                                            <span className="text-xs" style={{color: '#c0c0c0'}}>({room.type})</span>
-                                                        </div>
+                                                <div className="mb-4">
+                                                    <h3 className="text-lg font-bold mb-2" style={{color: '#ff6b6b'}}>
+                                                        Room {room.roomNumber}
+                                                    </h3>
+                                                    <div className="inline-flex items-center gap-2">
+                                                        <span className="text-sm font-semibold" style={{color: '#ff6b6b'}}>★★★★★</span>
+                                                        <span className="text-xs px-2.5 py-1 rounded-full font-semibold" 
+                                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}>
+                                                            {room.type}
+                                                        </span>
                                                     </div>
                                                 </div>
 
-                                                {/* Location Info */}
-                                                <div className="mb-3 text-xs flex items-start gap-1" style={{color: '#c0c0c0'}}>
-                                                    <span>📍</span>
-                                                    <div>
-                                                        <p className="font-semibold" style={{color: '#b0b0b0'}}>{room.type} Room Type</p>
-                                                        <p className="text-xs">Room #{room.roomNumber}</p>
-                                                    </div>
-                                                </div>
+                                                {/* Description */}
+                                                <p className="text-sm mb-4 leading-relaxed" style={{color: 'rgba(192, 192, 192, 0.8)'}}>
+                                                    Luxuriously appointed with premium amenities and thoughtful design details.
+                                                </p>
 
                                                 {/* Amenities/Features */}
-                                                <div className="mb-3">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {room.amenities?.slice(0, 2).map((amenity) => (
+                                                <div className="mb-4">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {room.amenities?.slice(0, 3).map((amenity) => (
                                                             <span
                                                                 key={amenity}
-                                                                className="text-xs rounded-full px-2 py-1 inline-flex items-center gap-1"
-                                                                style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}
+                                                                className="text-xs font-medium rounded-full px-3 py-1 inline-flex items-center gap-1 transition-all duration-200"
+                                                                style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}
                                                             >
-                                                                ✓ {amenity}
+                                                                âœ“ {amenity}
                                                             </span>
                                                         ))}
                                                     </div>
                                                 </div>
 
-                                                {/* Quote/Description */}
-                                                <div className="mb-3 p-2 rounded-lg italic text-xs" style={{backgroundColor: 'rgba(139, 0, 0, 0.1)', color: '#c0c0c0', borderLeft: '3px solid rgba(139, 0, 0, 0.6)'}}>
-                                                    "Clean, comfortable accommodations with quality service"
-                                                </div>
-
                                                 {/* Price Section */}
-                                                <div className="mb-3 flex items-baseline gap-2 flex-wrap">
-                                                    <span className="text-2xl font-bold" style={{color: '#ff6b6b'}}>
-                                                        ${room.price}
+                                                <div className="mb-5 py-4 px-4 rounded-lg" 
+                                                    style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', borderLeft: '3px solid #ff6b6b'}}>
+                                                    <div className="flex items-baseline gap-2 flex-wrap mb-1">
+                                                        <span className="text-3xl font-bold" style={{color: '#ff6b6b'}}>
+                                                            ${room.price}
+                                                        </span>
+                                                        <span className="text-sm" style={{color: 'rgba(255, 107, 107, 0.6)'}}>
+                                                            per night
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-xs opacity-60" style={{color: 'rgba(255, 107, 107, 0.8)'}}>
+                                                        Save up to ${Math.round(room.price * 0.2)} with longer stays
                                                     </span>
-                                                    <span className="text-xs line-through" style={{color: '#808080'}}>
-                                                        ${Math.round(room.price * 1.2)}
-                                                    </span>
-                                                    <span className="text-xs font-semibold" style={{color: '#c0c0c0'}}>per night</span>
                                                 </div>
 
-                                                {/* Rating and Availability */}
-                                                <div className="mb-4 grid grid-cols-3 gap-2 text-xs">
-                                                    <div className="text-center p-1 rounded" style={{backgroundColor: 'rgba(255, 107, 107, 0.1)', color: '#ff6b6b'}}>
-                                                        <div className="font-bold">9.1</div>
-                                                        <div style={{fontSize: '0.65rem'}}>Excellent</div>
-                                                    </div>
-                                                    <div className="text-center p-1 rounded" style={{backgroundColor: 'rgba(107, 107, 255, 0.1)', color: '#6b6bff'}}>
-                                                        <div className="font-bold">5.2K</div>
-                                                        <div style={{fontSize: '0.65rem'}}>Reviews</div>
-                                                    </div>
-                                                    <div className="text-center p-1 rounded" style={{backgroundColor: 'rgba(107, 255, 107, 0.1)', color: '#6bff6b'}}>
-                                                        <div className="font-bold">
-                                                            {room.availability === "available" ? "✓" : "✕"}
-                                                        </div>
-                                                        <div style={{fontSize: '0.65rem'}}>
-                                                            {room.availability === "available" ? "Free" : "Booked"}
-                                                        </div>
+                                                {/* Availability Status */}
+                                                <div className="mb-5">
+                                                    <div className="text-xs font-semibold px-3 py-2 rounded-lg text-center transition-all"
+                                                        style={{
+                                                            backgroundColor: room.availability === "available" ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                            color: room.availability === "available" ? '#86efac' : '#fca5a5'
+                                                        }}>
+                                                        {room.availability === "available" ? "âœ“ Available" : "âœ• Unavailable"}
                                                     </div>
                                                 </div>
-
-                                                {/* Stock/Availability Info */}
-                                                {room.availability === "available" && (
-                                                    <div className="mb-3 text-xs font-semibold px-2 py-1 rounded text-center" style={{backgroundColor: 'rgba(255, 0, 0, 0.2)', color: '#ff6b6b'}}>
-                                                        Only 2 left
-                                                    </div>
-                                                )}
 
                                                 {/* Action Buttons */}
-                                                <div className="flex gap-2 mt-auto">
+                                                <div className="flex gap-3 mt-auto">
                                                     <button
                                                         onClick={() => handleBookRoom(room.id)}
                                                         disabled={room.availability !== "available"}
-                                                        className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white`}
-                                                        style={{backgroundColor: room.availability === "available" ? '#8b0000' : '#666', color: '#fff'}}
+                                                        className={`flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:scale-95`}
+                                                        style={{
+                                                            background: room.availability === "available" 
+                                                                ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' 
+                                                                : 'rgba(107, 114, 128, 0.5)',
+                                                            color: room.availability === "available" ? '#fff' : '#9ca3af'
+                                                        }}
                                                     >
                                                         {room.availability === "available" ? "Book Now" : "Unavailable"}
                                                     </button>
                                                     <button
                                                         onClick={() => handleRoomDetails(room)}
-                                                        className="flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition border-2"
-                                                        style={{borderColor: '#8b0000', color: '#ff6b6b'}}
+                                                        className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-300 border-2 hover:shadow-lg transform hover:-translate-y-0.5 active:scale-95"
+                                                        style={{
+                                                            borderColor: '#ff6b6b',
+                                                            color: '#ff6b6b',
+                                                            backgroundColor: 'rgba(139, 0, 0, 0.15)'
+                                                        }}
                                                     >
                                                         Details
                                                     </button>
@@ -610,70 +610,71 @@ function Home() {
 
             {/* Room Detail Dialog */}
             {showDetailDialog && selectedRoom && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{backgroundColor: 'rgba(0, 0, 0, 0.8)'}}>
-                    <div className="relative w-full max-w-lg rounded-3xl border-2 overflow-hidden shadow-2xl scale-in" style={{borderColor: 'rgba(255, 107, 107, 0.8)', backgroundColor: 'rgba(20, 20, 40, 0.98)', boxShadow: '0 0 30px rgba(139, 0, 0, 0.5)', animation: 'fadeInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'}}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" style={{backgroundColor: 'rgba(0, 0, 0, 0.7)'}}>
+                    <div className="relative w-full max-w-lg rounded-2xl border-2 overflow-hidden shadow-2xl animate-slideDown" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.98)', boxShadow: '0 0 30px rgba(255, 107, 107, 0.2)'}}>​
                         {/* Close Button */}
                         <button
                             onClick={() => setShowDetailDialog(false)}
-                            className="absolute top-4 right-4 z-10 text-2xl text-gray-400 hover:text-red-400 transition duration-200 transform hover:scale-110"
+                            className="absolute top-4 right-4 z-10 text-2xl opacity-60 hover:opacity-100 transition duration-200 transform hover:scale-110"
+                            style={{color: '#ff6b6b'}}
                         >
-                            ✕
+                            âœ•
                         </button>
 
                         {/* Header Section */}
                         <div
                             className="h-40 flex items-center justify-center relative"
-                            style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #8b0000 50%, #4a0000 100%)', boxShadow: 'inset 0 0 20px rgba(139, 0, 0, 0.6)'}}
-                        >
+                            style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 50%, #993333 100%)'}}>
                             <div className="text-center">
-                                <p className="text-sm uppercase tracking-wide" style={{color: '#c0c0c0'}}>Room</p>
-                                <p className="text-6xl font-bold" style={{color: '#ff6b6b'}}>{selectedRoom.roomNumber}</p>
+                                <p className="text-sm uppercase tracking-wide" style={{color: '#fff'}}>Room</p>
+                                <p className="text-6xl font-bold" style={{color: '#fff'}}>{selectedRoom.roomNumber}</p>
                             </div>
                         </div>
 
                         {/* Content Section */}
-                        <div className="p-8 max-h-96 overflow-y-auto" style={{background: 'linear-gradient(to bottom, rgba(20, 20, 40, 0.98), rgba(10, 10, 30, 0.98))'}}>
+                        <div className="p-8 max-h-96 overflow-y-auto">
                             {/* Title and Price */}
                             <div className="mb-6 flex items-start justify-between">
                                 <div>
-                                    <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-3" style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}>
+                                    <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-3" style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}>
                                         {selectedRoom.type}
                                     </div>
-                                    <h1 className="text-3xl font-bold" style={{color: '#d0d0d0'}}>
-                                        {selectedRoom.type} Room {selectedRoom.roomNumber}
+                                    <h1 className="text-3xl font-bold" style={{color: '#ff6b6b'}}>
+                                        {selectedRoom.type} Room
                                     </h1>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-4xl font-bold" style={{color: '#ff6b6b'}}>
                                         ${selectedRoom.price}
                                     </p>
-                                    <p style={{color: '#c0c0c0'}}>per night</p>
+                                    <p className="text-sm" style={{color: 'rgba(255, 107, 107, 0.7)'}}>per night</p>
                                 </div>
                             </div>
 
                             {/* Availability */}
                             <div className="mb-6">
                                 <span
-                                    className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-medium ${
-                                        selectedRoom.availability === "available"
-                                            ? "bg-emerald-900 text-emerald-200"
-                                            : "bg-red-900 text-red-200"
-                                    }`}
-                                >
-                                    <span className={`mr-2 h-2 w-2 rounded-full ${selectedRoom.availability === "available" ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                                    className="inline-flex items-center rounded-full px-3 py-2 text-xs font-medium"
+                                    style={{
+                                        backgroundColor: selectedRoom.availability === "available" ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                        color: selectedRoom.availability === "available" ? '#86efac' : '#fca5a5'
+                                    }}>
+                                    <span className="mr-2 h-2 w-2 rounded-full" style={{
+                                        backgroundColor: selectedRoom.availability === "available" ? '#86efac' : '#fca5a5'
+                                    }} />
                                     {selectedRoom.availability === "available" ? "Available for Booking" : "Currently Booked"}
                                 </span>
                             </div>
 
                             {/* Amenities */}
                             <div className="mb-6">
-                                <h2 className="text-lg font-semibold mb-3" style={{color: '#d0d0d0'}}>Amenities</h2>
+                                <h2 className="text-lg font-semibold mb-3" style={{color: '#ff6b6b'}}>Amenities</h2>
                                 <div className="grid grid-cols-2 gap-2">
                                     {selectedRoom.amenities?.map((amenity) => (
                                         <div
                                             key={amenity}
                                             className="rounded-lg px-3 py-2 flex items-center text-sm"
-                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.2)', borderLeft: '3px solid #8b0000'}}
+                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', borderLeft: '3px solid #ff6b6b'}}
                                         >
                                             <span style={{color: '#ff6b6b'}} className="mr-2">✓</span>
                                             <span style={{color: '#c0c0c0'}}>{amenity}</span>
@@ -684,22 +685,25 @@ function Home() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3 p-8 border-t" style={{borderTopColor: 'rgba(139, 0, 0, 0.3)'}}>
+                        <div className="flex gap-3 p-6 border-t" style={{borderTopColor: 'rgba(139, 0, 0, 0.3)'}}>
                             <button
                                 onClick={() => {
                                     setShowDetailDialog(false)
                                     handleBookRoom(selectedRoom.id)
                                 }}
                                 disabled={selectedRoom.availability !== "available"}
-                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white"
-                                style={{backgroundColor: selectedRoom.availability === "available" ? '#8b0000' : '#666', color: '#fff'}}
+                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                                style={{
+                                    background: selectedRoom.availability === "available" ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' : 'rgba(107, 114, 128, 0.5)',
+                                    color: selectedRoom.availability === "available" ? '#fff' : '#9ca3af'
+                                }}
                             >
                                 {selectedRoom.availability === "available" ? "Book This Room" : "Room Unavailable"}
                             </button>
                             <button
                                 onClick={() => setShowDetailDialog(false)}
-                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition border-2"
-                                style={{borderColor: '#8b0000', color: '#ff6b6b'}}
+                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-300 border-2"
+                                style={{borderColor: '#ff6b6b', color: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.15)'}}
                             >
                                 Close
                             </button>

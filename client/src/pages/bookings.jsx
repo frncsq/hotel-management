@@ -15,12 +15,24 @@ function Bookings() {
     const [bookingForm, setBookingForm] = useState({
         checkInDate: "",
         checkOutDate: "",
-        guests: 1
+        adults: 4,
+        children: 1,
+        numberOfRooms: 2,
+        fullName: "",
+        email: "",
+        phone: "",
+        specialRequests: "",
+        paymentMethod: "credit-card",
+        cardNumber: "",
+        expiryDate: "",
+        cvv: ""
     })
     const [bookingLoading, setBookingLoading] = useState(false)
     const [bookingSuccess, setBookingSuccess] = useState(false)
     const [bookingError, setBookingError] = useState("")
     const [roomDetails, setRoomDetails] = useState(null)
+    const [currentImageIndex, setCurrentImageIndex] = useState(0)
+    const [agreeTerms, setAgreeTerms] = useState(false)
     
     const API_URL = import.meta.env.VITE_API_URL
     const navigate = useNavigate()
@@ -221,8 +233,13 @@ function Bookings() {
             return
         }
 
-        if (bookingForm.guests < 1 || bookingForm.guests > roomDetails.maxGuests) {
-            setBookingError(`Guests must be between 1 and ${roomDetails.maxGuests}`)
+        if (!bookingForm.fullName || !bookingForm.email || !bookingForm.phone) {
+            setBookingError("Please fill in guest information")
+            return
+        }
+
+        if (!agreeTerms) {
+            setBookingError("Please agree to terms and conditions")
             return
         }
 
@@ -273,7 +290,7 @@ function Bookings() {
         const { name, value } = e.target
         setBookingForm(prev => ({
             ...prev,
-            [name]: name === "guests" ? parseInt(value) : value
+            [name]: (name === "adults" || name === "children" || name === "numberOfRooms") ? parseInt(value) : value
         }))
         setBookingError("")
     }
@@ -289,168 +306,397 @@ function Bookings() {
     if (roomId && roomDetails) {
         const nights = calculateNights(bookingForm.checkInDate, bookingForm.checkOutDate)
         const totalPrice = calculateTotalPrice()
+        
+        // Mock room images
+        const roomImages = [
+            "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=600&h=400&fit=crop"
+        ]
+
+        const nextImage = () => {
+            setCurrentImageIndex((prev) => (prev + 1) % roomImages.length)
+        }
+
+        const prevImage = () => {
+            setCurrentImageIndex((prev) => (prev - 1 + roomImages.length) % roomImages.length)
+        }
 
         return (
             <>
                 <Header />
-                <main className="min-h-screen" style={{ backgroundColor: '#0a0a15' }}>
-                    <div className="max-w-2xl mx-auto px-4 sm:px-8 py-12">
-                        {/* Back Button */}
-                        <button
-                            onClick={() => navigate("/home")}
-                            className="mb-6 inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-md hover:shadow-lg transition"
-                            style={{backgroundColor: '#8b0000'}}
-                        >
-                            ← Back to Rooms
-                        </button>
+                <main className="min-h-screen py-8" style={{ backgroundColor: '#0a0a15' }}>
+                    <div className="max-w-6xl mx-auto px-4">
+                        {/* Modal Dialog */}
+                        <div className="rounded-xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'rgba(20, 20, 40, 0.95)', maxWidth: '1200px', margin: '0 auto' }}>
+                            {/* Modal Header */}
+                            <div className="px-8 py-6 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' }}>
+                                <h2 className="text-3xl font-bold text-white">Book Your Room</h2>
+                                <button
+                                    onClick={() => navigate("/home")}
+                                    className="text-white text-3xl font-light hover:opacity-80 transition"
+                                >
+                                    ✕
+                                </button>
+                            </div>
 
-                        {/* Page Title */}
-                        <div className="mb-8">
-                            <h1 className="text-4xl font-bold" style={{ color: '#d0d0d0', textShadow: '0 0 10px rgba(255, 107, 107, 0.3)' }}>
-                                Book Room {roomDetails.roomNumber}
-                            </h1>
-                            <p style={{color: '#c0c0c0', textShadow: '0 0 10px rgba(255, 107, 107, 0.3)'}} className="mt-2">{roomDetails.type} Room - ${roomDetails.price}/night</p>
-                        </div>
-
-                        {/* Booking Form Card */}
-                        <div className="rounded-3xl border-2 shadow-md p-8" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}>
-                            {bookingSuccess && (
-                                <div className="mb-6 p-4 rounded-lg" style={{backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: '#22c55e', border: '1px solid #22c55e', color: '#86efac'}}>
-                                    <p className="font-semibold">✓ Booking created successfully!</p>
-                                    <p className="text-sm">Redirecting to your bookings...</p>
-                                </div>
-                            )}
-
-                            {bookingError && (
-                                <div className="mb-6 p-4 rounded-lg" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b', border: '1px solid #ff6b6b'}}>
-                                    {bookingError}
-                                </div>
-                            )}
-
-                            {loading && (
-                                <div className="text-center py-12">
-                                    <div className="inline-block">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#ff6b6b' }}></div>
-                                    </div>
-                                    <p style={{ color: '#c0c0c0' }} className="mt-4">Loading room details...</p>
-                                </div>
-                            )}
-
-                            {!loading && (
-                                <form onSubmit={handleBookingSubmit}>
-                                    {/* Room Summary */}
-                                    <div className="mb-8 pb-8" style={{borderBottomColor: 'rgba(139, 0, 0, 0.3)', borderBottomWidth: '1px'}}>
-                                        <h3 className="text-lg font-semibold mb-4" style={{ color: '#d0d0d0' }}>Room Summary</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Room Number</p>
-                                                <p className="text-lg font-semibold" style={{color: '#ff6b6b'}}>{roomDetails.roomNumber}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Room Type</p>
-                                                <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{roomDetails.type}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Price/Night</p>
-                                                <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>${roomDetails.price}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Max Guests</p>
-                                                <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{roomDetails.maxGuests}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Bed Type</p>
-                                                <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{roomDetails.bedType}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Room Size</p>
-                                                <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{roomDetails.size}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Booking Form Fields */}
-                                    <div className="mb-8">
-                                        <h3 className="text-lg font-semibold mb-6" style={{ color: '#d0d0d0' }}>Booking Details</h3>
+                            {/* Modal Content - Two Column Layout */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
+                                {/* LEFT COLUMN - Room Details */}
+                                <div>
+                                    {/* Room Images Carousel */}
+                                    <div className="mb-6 rounded-lg overflow-hidden relative" style={{ backgroundColor: 'rgba(40, 40, 60, 0.8)' }}>
+                                        <img
+                                            src={roomImages[currentImageIndex]}
+                                            alt="Room"
+                                            className="w-full h-64 object-cover"
+                                        />
                                         
-                                        {/* Check-in Date */}
-                                        <div className="mb-6">
-                                            <label className="block text-sm font-medium mb-2" style={{color: '#c0c0c0'}}>Check-in Date</label>
-                                            <input
-                                                type="date"
-                                                name="checkInDate"
-                                                value={bookingForm.checkInDate}
-                                                onChange={handleFormChange}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                required
-                                                className="w-full rounded-lg border-2 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition"
-                                                style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0'}}
-                                            />
-                                        </div>
+                                        {/* Navigation Arrows */}
+                                        <button
+                                            onClick={prevImage}
+                                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
+                                        >
+                                            ‹
+                                        </button>
+                                        <button
+                                            onClick={nextImage}
+                                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
+                                        >
+                                            ›
+                                        </button>
 
-                                        {/* Check-out Date */}
-                                        <div className="mb-6">
-                                            <label className="block text-sm font-medium mb-2" style={{color: '#c0c0c0'}}>Check-out Date</label>
-                                            <input
-                                                type="date"
-                                                name="checkOutDate"
-                                                value={bookingForm.checkOutDate}
-                                                onChange={handleFormChange}
-                                                min={bookingForm.checkInDate || new Date().toISOString().split('T')[0]}
-                                                required
-                                                className="w-full rounded-lg border-2 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition"
-                                                style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0'}}
-                                            />
-                                        </div>
-
-                                        {/* Number of Guests */}
-                                        <div className="mb-6">
-                                            <label className="block text-sm font-medium mb-2" style={{color: '#c0c0c0'}}>Number of Guests</label>
-                                            <select
-                                                name="guests"
-                                                value={bookingForm.guests}
-                                                onChange={handleFormChange}
-                                                className="w-full rounded-lg border-2 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition"
-                                                style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0'}}
-                                            >
-                                                {[...Array(roomDetails.maxGuests)].map((_, i) => (
-                                                    <option key={i + 1} value={i + 1}>{i + 1} Guest{i === 0 ? '' : 's'}</option>
-                                                ))}
-                                            </select>
+                                        {/* Thumbnail Indicators */}
+                                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                                            {roomImages.map((_, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setCurrentImageIndex(idx)}
+                                                    className="w-10 h-8 rounded overflow-hidden border-2 hover:opacity-100 transition"
+                                                    style={{ borderColor: currentImageIndex === idx ? '#3b82f6' : 'rgba(255,255,255,0.3)', opacity: currentImageIndex === idx ? 1 : 0.6 }}
+                                                >
+                                                    <img src={roomImages[idx]} alt={`Room ${idx + 1}`} className="w-full h-full object-cover" />
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
-                                    {/* Price Summary */}
-                                    {nights > 0 && (
-                                        <div className="mb-8 pb-8 rounded-lg p-6" style={{backgroundColor: 'rgba(139, 0, 0, 0.1)', borderColor: 'rgba(139, 0, 0, 0.3)', borderWidth: '1px'}}>
-                                            <div className="space-y-2 mb-4">
-                                                <div className="flex justify-between">
-                                                    <span style={{color: '#c0c0c0'}}>Nights:</span>
-                                                    <span className="font-semibold" style={{color: '#d0d0d0'}}>{nights} {nights === 1 ? 'night' : 'nights'}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span style={{color: '#c0c0c0'}}>Price per night:</span>
-                                                    <span className="font-semibold" style={{color: '#d0d0d0'}}>${roomDetails.price}</span>
-                                                </div>
-                                                <div className="flex justify-between pt-3" style={{borderTopColor: 'rgba(139, 0, 0, 0.3)', borderTopWidth: '1px'}}>
-                                                    <span style={{color: '#c0c0c0'}}>Total:</span>
-                                                    <span className="text-2xl font-bold" style={{color: '#ff6b6b'}}>${totalPrice}</span>
-                                                </div>
+                                    {/* Room Title and Info */}
+                                    <h3 className="text-2xl font-bold mb-2" style={{ color: '#d0d0d0' }}>
+                                        {roomDetails.type} Room
+                                    </h3>
+                                    <p className="text-xl font-semibold mb-6" style={{ color: '#ff6b6b' }}>
+                                        ${roomDetails.price} / Night
+                                    </p>
+                                    <p className="text-sm mb-6" style={{ color: '#c0c0c0' }}>
+                                        {roomDetails.description}
+                                    </p>
+
+                                    {/* Room Details Grid */}
+                                    <div className="space-y-3 mb-6 pb-6" style={{ borderBottomColor: 'rgba(139, 0, 0, 0.3)', borderBottomWidth: '1px' }}>
+                                        <div className="flex justify-between items-center">
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">🛏️ Bed Type:</span>
+                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.bedType}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">👥 Max Guests:</span>
+                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.maxGuests}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">📐 Room Size:</span>
+                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.size}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Amenities */}
+                                    <h4 className="font-semibold mb-3" style={{ color: '#d0d0d0' }}>Amenities</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {roomDetails.amenities?.map((amenity) => (
+                                            <div key={amenity} className="text-sm flex items-center" style={{ color: '#c0c0c0' }}>
+                                                <span className="mr-2" style={{ color: '#3b82f6' }}>✓</span>
+                                                {amenity}
                                             </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Additional Info */}
+                                    <div className="mt-6 p-4 rounded-lg text-sm" style={{ backgroundColor: 'rgba(139, 0, 0, 0.1)', borderColor: 'rgba(139, 0, 0, 0.3)', borderWidth: '1px' }}>
+                                        <p style={{ color: '#c0c0c0' }}>
+                                            <strong>Check-in:</strong> 3 PM<br />
+                                            <strong>Check-out:</strong> 11 AM<br />
+                                            <strong>Cancellation:</strong> Free cancellation up to 48 hours before arrival. No pets.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT COLUMN - Booking Form */}
+                                <div className="max-h-96 md:max-h-none md:overflow-y-auto">
+                                    {bookingSuccess && (
+                                        <div className="mb-6 p-4 rounded-lg text-center" style={{backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: '#22c55e', border: '1px solid #22c55e', color: '#86efac'}}>
+                                            <p className="font-semibold">✓ Booking created successfully!</p>
+                                            <p className="text-sm">Redirecting to your bookings...</p>
                                         </div>
                                     )}
 
-                                    {/* Submit Button */}
-                                    <button
-                                        type="submit"
-                                        disabled={bookingLoading || !bookingForm.checkInDate || !bookingForm.checkOutDate}
-                                        className="w-full rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-md hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                        style={{backgroundColor: '#8b0000'}}
-                                    >
-                                        {bookingLoading ? "Creating booking..." : `Confirm Booking - $${totalPrice}`}
-                                    </button>
-                                </form>
-                            )}
+                                    {bookingError && (
+                                        <div className="mb-6 p-4 rounded-lg" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b', border: '1px solid #ff6b6b'}}>
+                                            {bookingError}
+                                        </div>
+                                    )}
+
+                                    {!bookingSuccess && (
+                                        <form onSubmit={handleBookingSubmit} className="space-y-4">
+                                            {/* Stay Information */}
+                                            <div>
+                                                <h4 className="font-semibold mb-3" style={{ color: '#d0d0d0' }}>Stay Information</h4>
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                    <div>
+                                                        <label className="block text-xs mb-2" style={{color: '#c0c0c0'}}>Check-in</label>
+                                                        <input
+                                                            type="date"
+                                                            name="checkInDate"
+                                                            value={bookingForm.checkInDate}
+                                                            onChange={handleFormChange}
+                                                            min={new Date().toISOString().split('T')[0]}
+                                                            required
+                                                            className="w-full rounded px-3 py-2 text-sm"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs mb-2" style={{color: '#c0c0c0'}}>Check-out</label>
+                                                        <input
+                                                            type="date"
+                                                            name="checkOutDate"
+                                                            value={bookingForm.checkOutDate}
+                                                            onChange={handleFormChange}
+                                                            min={bookingForm.checkInDate || new Date().toISOString().split('T')[0]}
+                                                            required
+                                                            className="w-full rounded px-3 py-2 text-sm"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div>
+                                                        <label className="block text-xs mb-2" style={{color: '#c0c0c0'}}>Adults</label>
+                                                        <select
+                                                            name="adults"
+                                                            value={bookingForm.adults}
+                                                            onChange={handleFormChange}
+                                                            className="w-full rounded px-3 py-2 text-sm"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        >
+                                                            {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs mb-2" style={{color: '#c0c0c0'}}>Children</label>
+                                                        <select
+                                                            name="children"
+                                                            value={bookingForm.children}
+                                                            onChange={handleFormChange}
+                                                            className="w-full rounded px-3 py-2 text-sm"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        >
+                                                            {[0,1,2,3,4].map(n => <option key={n} value={n}>{n}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs mb-2" style={{color: '#c0c0c0'}}>Rooms</label>
+                                                        <select
+                                                            name="numberOfRooms"
+                                                            value={bookingForm.numberOfRooms}
+                                                            onChange={handleFormChange}
+                                                            className="w-full rounded px-3 py-2 text-sm"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        >
+                                                            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Pricing Summary */}
+                                            {nights > 0 && (
+                                                <div className="p-3 rounded" style={{backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', borderWidth: '1px'}}>
+                                                    <h4 className="font-semibold mb-3 text-sm" style={{ color: '#d0d0d0' }}>Pricing Summary</h4>
+                                                    <div className="space-y-2 text-xs">
+                                                        <div className="flex justify-between">
+                                                            <span style={{color: '#c0c0c0'}}>Room Price (${roomDetails.price} x {nights} nights):</span>
+                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${roomDetails.price * nights}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span style={{color: '#c0c0c0'}}>Taxes & Fees:</span>
+                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${Math.round(roomDetails.price * nights * 0.1)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span style={{color: '#c0c0c0'}}>Promo Code:</span>
+                                                            <span style={{color: '#ff6b6b'}} className="font-semibold">[DISCOUNT10] -$100</span>
+                                                        </div>
+                                                        <div className="flex justify-between pt-2 border-t" style={{ borderTopColor: 'rgba(59, 130, 246, 0.3)' }}>
+                                                            <span style={{color: '#c0c0c0'}} className="font-semibold">Total Price:</span>
+                                                            <span style={{color: '#ff6b6b'}} className="text-lg font-bold">${totalPrice}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Guest Information */}
+                                            <div>
+                                                <h4 className="font-semibold mb-3 text-sm" style={{ color: '#d0d0d0' }}>Guest Information</h4>
+                                                <div className="space-y-3">
+                                                    <input
+                                                        type="text"
+                                                        name="fullName"
+                                                        placeholder="Full Name"
+                                                        value={bookingForm.fullName}
+                                                        onChange={handleFormChange}
+                                                        required
+                                                        className="w-full rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                        style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                    />
+                                                    <input
+                                                        type="email"
+                                                        name="email"
+                                                        placeholder="Email Address"
+                                                        value={bookingForm.email}
+                                                        onChange={handleFormChange}
+                                                        required
+                                                        className="w-full rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                        style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                    />
+                                                    <input
+                                                        type="tel"
+                                                        name="phone"
+                                                        placeholder="Phone Number"
+                                                        value={bookingForm.phone}
+                                                        onChange={handleFormChange}
+                                                        required
+                                                        className="w-full rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                        style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Special Requests */}
+                                            <div>
+                                                <label className="block text-xs mb-2 font-semibold" style={{color: '#c0c0c0'}}>Special Requests (optional)</label>
+                                                <textarea
+                                                    name="specialRequests"
+                                                    value={bookingForm.specialRequests}
+                                                    onChange={handleFormChange}
+                                                    placeholder="Special Requests"
+                                                    rows="3"
+                                                    className="w-full rounded px-3 py-2 text-sm placeholder-gray-500 resize-none"
+                                                    style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                />
+                                            </div>
+
+                                            {/* Payment Method */}
+                                            <div>
+                                                <h4 className="font-semibold mb-3 text-sm" style={{ color: '#d0d0d0' }}>Payment Method</h4>
+                                                <div className="flex gap-2 mb-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setBookingForm({...bookingForm, paymentMethod: 'credit-card'})}
+                                                        className="flex-1 py-2 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
+                                                        style={{ backgroundColor: bookingForm.paymentMethod === 'credit-card' ? '#3b82f6' : 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000' }}
+                                                    >
+                                                    💳 Credit Card
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setBookingForm({...bookingForm, paymentMethod: 'paypal'})}
+                                                        className="flex-1 py-2 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
+                                                        style={{ backgroundColor: bookingForm.paymentMethod === 'paypal' ? '#3b82f6' : 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000' }}
+                                                    >
+                                                    🅿️ PayPal
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setBookingForm({...bookingForm, paymentMethod: 'hotel'})}
+                                                        className="flex-1 py-2 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
+                                                        style={{ backgroundColor: bookingForm.paymentMethod === 'hotel' ? '#3b82f6' : 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000' }}
+                                                    >
+                                                    🏨 Pay at Hotel
+                                                    </button>
+                                                </div>
+
+                                                {bookingForm.paymentMethod === 'credit-card' && (
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            type="text"
+                                                            name="cardNumber"
+                                                            placeholder="Card Number"
+                                                            value={bookingForm.cardNumber}
+                                                            onChange={handleFormChange}
+                                                            className="w-full rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                            style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                        />
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <input
+                                                                type="text"
+                                                                name="expiryDate"
+                                                                placeholder="Expiry Date (MM/YY)"
+                                                                value={bookingForm.expiryDate}
+                                                                onChange={handleFormChange}
+                                                                className="rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                                style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                name="cvv"
+                                                                placeholder="CVV"
+                                                                value={bookingForm.cvv}
+                                                                onChange={handleFormChange}
+                                                                className="rounded px-3 py-2 text-sm placeholder-gray-500"
+                                                                style={{borderColor: '#8b0000', backgroundColor: 'rgba(40, 40, 60, 0.8)', color: '#d0d0d0', border: '1px solid #8b0000'}}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Terms & Conditions */}
+                                            <div className="flex items-start gap-2 text-xs">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={agreeTerms}
+                                                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                                                    className="mt-1"
+                                                    style={{ accentColor: '#3b82f6' }}
+                                                />
+                                                <label style={{color: '#c0c0c0'}}>
+                                                    I agree to the <a href="#" style={{color: '#3b82f6', textDecoration: 'underline'}}>Terms & Conditions</a> and <a href="#" style={{color: '#3b82f6', textDecoration: 'underline'}}>Privacy Policy</a>
+                                                </label>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-3 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate("/home")}
+                                                    className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition"
+                                                    style={{borderColor: '#8b0000', color: '#ff6b6b', border: '2px solid #8b0000', backgroundColor: 'transparent' }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="submit"
+                                                    disabled={bookingLoading || !agreeTerms}
+                                                    className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-md hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    style={{backgroundColor: '#3b82f6'}}
+                                                >
+                                                    {bookingLoading ? "Booking..." : "Book Now"}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </main>
