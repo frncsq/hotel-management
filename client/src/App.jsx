@@ -7,6 +7,7 @@ import RoomDetail from "./pages/room-detail.jsx";
 import Rooms from "./pages/rooms.jsx";
 import Contact from "./pages/contact.jsx";
 import Profile from "./pages/profile.jsx";
+import AdminDashboard from "./pages/admin.jsx";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
       <Route path="/rooms" element={<Rooms />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }

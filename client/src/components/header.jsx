@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom"
 import axios from "axios"
 import { useState, useRef, useEffect } from "react"
+import ConfirmModal from "./confirm-modal"
 
 function Header() {
     const navigate = useNavigate()
     const location = useLocation()
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
     const [expandedItem, setExpandedItem] = useState(null)
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
     const profileDropdownRef = useRef(null)
@@ -22,21 +23,23 @@ function Header() {
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    const handleLogout = async () => {
-        if (!window.confirm("Are you sure you want to logout?")) return
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false)
 
-        try {
-            const response = await axios.post(`${API_URL}/logout`, {}, {
-                withCredentials: true
-            })
-            if (response.data.success) {
-                navigate("/") 
-            } else {
-                console.error("Logout failed:", response.data.message)
-            }
-        } catch (error) {
-            console.error("Logout failed:", error)
-        }
+    const triggerLogout = () => {
+        setIsProfileDropdownOpen(false)
+        setLogoutModalOpen(true)
+    }
+
+    const executeLogout = () => {
+        setLogoutModalOpen(false)
+        // JWT is stateless — logout is purely client-side
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        navigate("/")
+    }
+
+    const cancelLogout = () => {
+        setLogoutModalOpen(false)
     }
 
     const navItems = [
@@ -214,8 +217,7 @@ function Header() {
                                     <div className="border-t p-2" style={{borderColor: 'rgba(139, 0, 0, 0.2)'}}>
                                         <button
                                             onClick={() => {
-                                                handleLogout()
-                                                setIsProfileDropdownOpen(false)
+                                                triggerLogout()
                                             }}
                                             className="w-full text-left px-4 py-2.5 text-sm rounded-lg transition-all duration-200"
                                             style={{background: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b'}}
@@ -237,6 +239,15 @@ function Header() {
                     </div>
                 </div>
             </div>
+            
+            <ConfirmModal 
+                isOpen={logoutModalOpen}
+                message="Uuurgghh... Brrraaiinnss... You leaving the dark domain...?"
+                onConfirm={executeLogout}
+                onCancel={cancelLogout}
+                confirmText="Graaawrr (Logout)"
+                cancelText="Mmmmrrr (Stay)"
+            />
         </header>
     )
 }

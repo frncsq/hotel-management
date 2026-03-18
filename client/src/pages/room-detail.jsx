@@ -10,7 +10,7 @@ function RoomDetail() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
 
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
 
     useEffect(() => {
         fetchRoomDetail()
@@ -21,22 +21,9 @@ function RoomDetail() {
         try {
             setLoading(true)
             setError("")
-            
-            // Try API first
-            try {
-                const response = await axios.get(`${API_URL}/rooms/${roomId}`)
-                if (response.data.success) {
-                    setRoom(response.data.room)
-                    return
-                }
-            } catch (err) {
-                console.error("API error:", err)
-            }
-
-            // Fallback to mock data
-            const mockRoom = getMockRoomDetail(roomId)
-            if (mockRoom) {
-                setRoom(mockRoom)
+            const response = await axios.get(`${API_URL}/rooms/${roomId}`)
+            if (response.data) {
+                setRoom(response.data)
             } else {
                 setError("Room not found")
             }
@@ -48,84 +35,6 @@ function RoomDetail() {
         }
     }
 
-    // Mock room data
-    const getMockRoomDetail = (id) => {
-        const mockRooms = [
-            { 
-                id: 1, 
-                roomNumber: "101", 
-                type: "Single", 
-                price: 80, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV"],
-                description: "A cozy single room perfect for solo travelers seeking comfort and convenience.",
-                maxGuests: 1,
-                bedType: "Single Bed",
-                size: "20 sqm"
-            },
-            { 
-                id: 2, 
-                roomNumber: "102", 
-                type: "Double", 
-                price: 120, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Minibar"],
-                description: "Spacious double room with elegant furnishings and premium amenities.",
-                maxGuests: 2,
-                bedType: "Queen Bed",
-                size: "30 sqm"
-            },
-            { 
-                id: 3, 
-                roomNumber: "103", 
-                type: "Suite", 
-                price: 250, 
-                availability: "booked", 
-                amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi"],
-                description: "Luxurious suite with separate living area and premium bathroom.",
-                maxGuests: 4,
-                bedType: "King Bed + Sofa",
-                size: "50 sqm"
-            },
-            { 
-                id: 4, 
-                roomNumber: "201", 
-                type: "Single", 
-                price: 85, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV"],
-                description: "Upper floor single room with city view and modern amenities.",
-                maxGuests: 1,
-                bedType: "Single Bed",
-                size: "20 sqm"
-            },
-            { 
-                id: 5, 
-                roomNumber: "202", 
-                type: "Double", 
-                price: 150, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Balcony"],
-                description: "Deluxe double room with private balcony overlooking the city.",
-                maxGuests: 2,
-                bedType: "Queen Bed",
-                size: "35 sqm"
-            },
-            { 
-                id: 6, 
-                roomNumber: "203", 
-                type: "Suite", 
-                price: 300, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi", "Balcony"],
-                description: "Premium suite with all amenities and spectacular views.",
-                maxGuests: 4,
-                bedType: "King Bed + Sofa",
-                size: "55 sqm"
-            },
-        ]
-        return mockRooms.find(r => r.id === parseInt(id))
-    }
 
     const handleBookRoom = () => {
         if (room) {
@@ -187,13 +96,16 @@ function RoomDetail() {
                     {/* Room Detail Card */}
                     <div className="rounded-3xl border-2 overflow-hidden shadow-lg" style={{borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)'}}>
                         {/* Header Section */}
-                        <div
-                            className="h-48 flex items-center justify-center relative"
-                            style={{background: 'linear-gradient(135deg, #8b0000 0%, #4a0000 100%)'}}
-                        >
-                            <div className="text-center">
-                                <p className="text-sm uppercase tracking-wide" style={{color: '#c0c0c0'}}>Room</p>
-                                <p className="text-6xl font-bold" style={{color: '#ff6b6b'}}>{room.roomNumber}</p>
+                        <div className="relative h-56 overflow-hidden" style={{background: 'linear-gradient(135deg, #4a0000 0%, #1a0a2e 100%)'}}>
+                            {room.image_url ? (
+                                <img src={`${API_URL}${room.image_url}`} alt={`Room ${room.room_number}`} className="w-full h-full object-cover opacity-90" />
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <p className="text-7xl font-bold" style={{color: '#ff6b6b', opacity: 0.5}}>{room.room_number}</p>
+                                </div>
+                            )}
+                            <div className="absolute bottom-4 left-4">
+                                <span className="px-3 py-1 rounded-full text-xs font-bold" style={{background: '#8b0000', color: '#fff'}}>{room.type}</span>
                             </div>
                         </div>
 
@@ -202,16 +114,14 @@ function RoomDetail() {
                             {/* Title and Price */}
                             <div className="mb-6 flex items-start justify-between">
                                 <div>
-                                    <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-3" style={{backgroundColor: 'rgba(139, 0, 0, 0.3)', color: '#ff6b6b'}}>
-                                        {room.type}
-                                    </div>
                                     <h1 className="text-3xl font-bold" style={{color: '#d0d0d0'}}>
-                                        {room.type} Room {room.roomNumber}
+                                        {room.type} Room {room.room_number}
                                     </h1>
+                                    <p className="text-sm mt-1" style={{color: '#a0a0a0'}}>Capacity: {room.capacity || 2} guests</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-4xl font-bold" style={{color: '#ff6b6b'}}>
-                                        ${room.price}
+                                        ${parseFloat(room.price || 0).toFixed(0)}
                                     </p>
                                     <p style={{color: '#c0c0c0'}}>per night</p>
                                 </div>
@@ -221,13 +131,13 @@ function RoomDetail() {
                             <div className="mb-6">
                                 <span
                                     className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-medium ${
-                                        room.availability === "available"
+                                        room.status === 'available'
                                             ? "bg-emerald-900 text-emerald-200"
                                             : "bg-red-900 text-red-200"
                                     }`}
                                 >
-                                    <span className={`mr-2 h-2 w-2 rounded-full ${room.availability === "available" ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                                    {room.availability === "available" ? "Available for Booking" : "Currently Booked"}
+                                    <span className={`mr-2 h-2 w-2 rounded-full ${room.status === 'available' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                                    {room.status === 'available' ? "Available for Booking" : "Currently " + (room.status || 'Unavailable')}
                                 </span>
                             </div>
 
@@ -240,16 +150,16 @@ function RoomDetail() {
                             {/* Room Details Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
                                 <div>
-                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Max Guests</p>
-                                    <p className="text-2xl font-bold" style={{color: '#ff6b6b'}}>{room.maxGuests}</p>
+                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Capacity</p>
+                                    <p className="text-2xl font-bold" style={{color: '#ff6b6b'}}>{room.capacity || 2}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Bed Type</p>
-                                    <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{room.bedType}</p>
+                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Type</p>
+                                    <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{room.type}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Room Size</p>
-                                    <p className="text-lg font-semibold" style={{color: '#d0d0d0'}}>{room.size}</p>
+                                    <p className="text-xs uppercase tracking-wide mb-1" style={{color: '#c0c0c0'}}>Status</p>
+                                    <p className="text-lg font-semibold capitalize" style={{color: room.status === 'available' ? '#86efac' : '#fca5a5'}}>{room.status || 'available'}</p>
                                 </div>
                             </div>
 
@@ -274,11 +184,11 @@ function RoomDetail() {
                             <div className="flex gap-3">
                                 <button
                                     onClick={handleBookRoom}
-                                    disabled={room.availability !== "available"}
+                                    disabled={room.status !== 'available'}
                                     className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white"
-                                    style={{backgroundColor: room.availability === "available" ? '#8b0000' : '#666', color: '#fff'}}
+                                    style={{backgroundColor: room.status === 'available' ? '#8b0000' : '#666', color: '#fff'}}
                                 >
-                                    {room.availability === "available" ? "Book This Room" : "Room Unavailable"}
+                                    {room.status === 'available' ? "Book This Room" : "Room Unavailable"}
                                 </button>
                                 <button
                                     onClick={handleBack}

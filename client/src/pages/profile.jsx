@@ -19,7 +19,7 @@ function Profile() {
 	const [message, setMessage] = useState("")
 	const [messageType, setMessageType] = useState("")
 
-	const API_URL = import.meta.env.VITE_API_URL
+	const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
 	const token = localStorage.getItem("token")
 
 	useEffect(() => {

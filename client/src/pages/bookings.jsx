@@ -2,6 +2,7 @@ import Header from "../components/header"
 import { useState, useEffect } from "react"
 import axios from "axios"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import ConfirmModal from "../components/confirm-modal"
 
 function Bookings() {
     const [bookings, setBookings] = useState([])
@@ -10,6 +11,10 @@ function Bookings() {
     const [statusFilter, setStatusFilter] = useState("all")
     const [searchParams] = useSearchParams()
     const roomId = searchParams.get("roomId")
+    
+    // Modal state for cancellation
+    const [cancelModalOpen, setCancelModalOpen] = useState(false)
+    const [bookingToCancel, setBookingToCancel] = useState(null)
     
     // Booking form state
     const [bookingForm, setBookingForm] = useState({
@@ -31,10 +36,9 @@ function Bookings() {
     const [bookingSuccess, setBookingSuccess] = useState(false)
     const [bookingError, setBookingError] = useState("")
     const [roomDetails, setRoomDetails] = useState(null)
-    const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [agreeTerms, setAgreeTerms] = useState(false)
     
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -50,22 +54,9 @@ function Bookings() {
         try {
             setLoading(true)
             setError("")
-            
-            // Try API first
-            try {
-                const response = await axios.get(`${API_URL}/rooms/${roomId}`)
-                if (response.data.success) {
-                    setRoomDetails(response.data.room)
-                    return
-                }
-            } catch (err) {
-                console.error("API error:", err)
-            }
-
-            // Fallback to mock data
-            const mockRoom = getMockRoomDetail(roomId)
-            if (mockRoom) {
-                setRoomDetails(mockRoom)
+            const response = await axios.get(`${API_URL}/rooms/${roomId}`)
+            if (response.data) {
+                setRoomDetails(response.data)
             } else {
                 setError("Room not found")
             }
@@ -77,117 +68,119 @@ function Bookings() {
         }
     }
 
-    // Mock room data for fallback
-    const getMockRoomDetail = (id) => {
-        const mockRooms = [
-            { 
-                id: 1, 
-                roomNumber: "101", 
-                type: "Single", 
-                price: 80, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV"],
-                description: "A cozy single room perfect for solo travelers seeking comfort and convenience.",
-                maxGuests: 1,
-                bedType: "Single Bed",
-                size: "20 sqm"
-            },
-            { 
-                id: 2, 
-                roomNumber: "102", 
-                type: "Double", 
-                price: 120, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Minibar"],
-                description: "Spacious double room with elegant furnishings and premium amenities.",
-                maxGuests: 2,
-                bedType: "Queen Bed",
-                size: "30 sqm"
-            },
-            { 
-                id: 3, 
-                roomNumber: "103", 
-                type: "Suite", 
-                price: 250, 
-                availability: "booked", 
-                amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi"],
-                description: "Luxurious suite with separate living area and premium bathroom.",
-                maxGuests: 4,
-                bedType: "King Bed + Sofa",
-                size: "50 sqm"
-            },
-            { 
-                id: 4, 
-                roomNumber: "201", 
-                type: "Single", 
-                price: 85, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV"],
-                description: "Upper floor single room with city view and modern amenities.",
-                maxGuests: 1,
-                bedType: "Single Bed",
-                size: "20 sqm"
-            },
-            { 
-                id: 5, 
-                roomNumber: "202", 
-                type: "Double", 
-                price: 150, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Balcony"],
-                description: "Deluxe double room with private balcony overlooking the city.",
-                maxGuests: 2,
-                bedType: "Queen Bed",
-                size: "35 sqm"
-            },
-            { 
-                id: 6, 
-                roomNumber: "203", 
-                type: "Suite", 
-                price: 300, 
-                availability: "available", 
-                amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi", "Balcony"],
-                description: "Premium suite with all amenities and spectacular views.",
-                maxGuests: 4,
-                bedType: "King Bed + Sofa",
-                size: "55 sqm"
-            },
-        ]
-        return mockRooms.find(r => r.id === parseInt(id))
-    }
 
-    const fetchBookings = async () => {
+    const fetchBookings = async (retries = 3) => {
+        const token = localStorage.getItem('token')
+        if (!token && retries === 3) {
+            setError('Please log in to view bookings')
+            navigate('/login')
+            return
+        }
+
         try {
             setLoading(true)
             setError("")
-            const response = await axios.get(`${API_URL}/get-bookings`, {
-                withCredentials: true
+
+            const response = await axios.get(`${API_URL}/reservations`, {
+                withCredentials: true,
+                timeout: 10000,
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
             })
-            if (response.data.success) {
-                setBookings(response.data.bookings || [])
+
+            if (Array.isArray(response.data)) {
+                const mappedBookings = response.data.map(b => ({
+                    id: b.id,
+                    roomNumber: b.room_number,
+                    roomType: b.type || `Room ${b.room_number}`,
+                    status: b.status,
+                    checkInDate: b.check_in_date,
+                    checkOutDate: b.check_out_date,
+                    totalPrice: parseFloat(b.total_amount),
+                    roomImage: b.image_url ? `${API_URL}${b.image_url}` : null,
+                    guests: b.adult_count + b.children_count
+                }))
+                setBookings(mappedBookings)
+                return true
             } else {
-                setError("Failed to load bookings")
+                throw new Error(response.data.message || 'Failed to load bookings')
             }
         } catch (error) {
-            console.error("Error fetching bookings:", error)
-            setError("Error loading bookings. Please try again.")
+            console.error(`Fetch attempt ${4-retries} failed:`, {
+                url: `${API_URL}/reservations`,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            })
+
+            let errorMsg = 'Error loading bookings'
+            if (error.response) {
+                errorMsg = error.response.data?.message || `Server error: ${error.response.status}`
+            } else if (error.request) {
+                errorMsg = 'No response from server. Check if backend is running on localhost:3000'
+            } else {
+                errorMsg = error.message
+            }
+
+            if (retries > 1) {
+                console.log(`Retrying in ${Math.pow(2, 3-retries)}s... (${retries-1} attempts left)`)
+                setTimeout(() => fetchBookings(retries - 1), Math.pow(2, 3-retries) * 1000)
+                return false
+            } else {
+                // Final fallback: mock data
+                console.warn('All retries failed. Using mock data.')
+                setBookings(MOCK_BOOKINGS)
+                setError(`${errorMsg} (using demo data)`)
+                return false
+            }
         } finally {
             setLoading(false)
         }
     }
 
-    const handleCancelBooking = async (bookingId) => {
-        if (!window.confirm("Are you sure you want to cancel this booking?")) return
+    const MOCK_BOOKINGS = [
+        {
+            id: 1,
+            roomNumber: '101',
+            roomType: 'Deluxe Single',
+            status: 'confirmed',
+            checkInDate: '2024-12-15',
+            checkOutDate: '2024-12-18',
+            totalPrice: 360.00,
+            guests: 1
+        },
+        {
+            id: 2,
+            roomNumber: '205',
+            roomType: 'Luxury Suite',
+            status: 'pending',
+            checkInDate: '2024-12-20',
+            checkOutDate: '2024-12-25',
+            totalPrice: 1200.00,
+            guests: 2
+        }
+    ]
+
+    const triggerCancelBooking = (bookingId) => {
+        setBookingToCancel(bookingId)
+        setCancelModalOpen(true)
+    }
+
+    const executeCancelBooking = async () => {
+        setCancelModalOpen(false)
+        if (!bookingToCancel) return
 
         try {
-            const response = await axios.post(
-                `${API_URL}/cancel-booking/${bookingId}`,
-                {},
-                { withCredentials: true }
+            const response = await axios.delete(
+                `${API_URL}/reservations/${bookingToCancel}`,
+                { 
+                    withCredentials: true,
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }
             )
-            if (response.data.success) {
+            if (response.status === 200) {
                 setBookings(bookings.map(b => 
-                    b.id === bookingId ? { ...b, status: 'cancelled' } : b
+                    b.id === bookingToCancel ? { ...b, status: 'cancelled' } : b
                 ))
             } else {
                 setError("Failed to cancel booking")
@@ -195,6 +188,8 @@ function Bookings() {
         } catch (error) {
             console.error("Error cancelling booking:", error)
             setError("Error cancelling booking")
+        } finally {
+            setBookingToCancel(null)
         }
     }
 
@@ -250,23 +245,23 @@ function Bookings() {
             const nights = calculateNights(bookingForm.checkInDate, bookingForm.checkOutDate)
             const totalPrice = nights * roomDetails.price
 
+            const token = localStorage.getItem('token')
             const response = await axios.post(
-                `${API_URL}/create-booking`,
+                `${API_URL}/reservations`,
                 {
-                    roomId: roomDetails.id,
-                    roomNumber: roomDetails.roomNumber,
-                    roomType: roomDetails.type,
-                    checkInDate: bookingForm.checkInDate,
-                    checkOutDate: bookingForm.checkOutDate,
-                    guests: bookingForm.guests,
-                    pricePerNight: roomDetails.price,
-                    totalPrice: totalPrice,
-                    nights: nights
+                    room_id: roomDetails.id,
+                    check_in_date: bookingForm.checkInDate,
+                    check_out_date: bookingForm.checkOutDate,
+                    total_price: totalPrice
                 },
-                { withCredentials: true }
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
             )
 
-            if (response.data.success) {
+            if (response.data) {
                 setBookingSuccess(true)
                 setBookingForm({ checkInDate: "", checkOutDate: "", guests: 1 })
                 
@@ -307,21 +302,10 @@ function Bookings() {
         const nights = calculateNights(bookingForm.checkInDate, bookingForm.checkOutDate)
         const totalPrice = calculateTotalPrice()
         
-        // Mock room images
-        const roomImages = [
-            "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=600&h=400&fit=crop"
-        ]
+        // Build the room image URL from the database
+        const roomImageUrl = roomDetails.image_url ? `${API_URL}${roomDetails.image_url}` : null
+        const roomPrice = parseFloat(roomDetails.price || 0)
 
-        const nextImage = () => {
-            setCurrentImageIndex((prev) => (prev + 1) % roomImages.length)
-        }
-
-        const prevImage = () => {
-            setCurrentImageIndex((prev) => (prev - 1 + roomImages.length) % roomImages.length)
-        }
 
         return (
             <>
@@ -345,80 +329,44 @@ function Bookings() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
                                 {/* LEFT COLUMN - Room Details */}
                                 <div>
-                                    {/* Room Images Carousel */}
+                                    {/* Room Image */}
                                     <div className="mb-6 rounded-lg overflow-hidden relative" style={{ backgroundColor: 'rgba(40, 40, 60, 0.8)' }}>
-                                        <img
-                                            src={roomImages[currentImageIndex]}
-                                            alt="Room"
-                                            className="w-full h-64 object-cover"
-                                        />
-                                        
-                                        {/* Navigation Arrows */}
-                                        <button
-                                            onClick={prevImage}
-                                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
-                                        >
-                                            ‹
-                                        </button>
-                                        <button
-                                            onClick={nextImage}
-                                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
-                                        >
-                                            ›
-                                        </button>
-
-                                        {/* Thumbnail Indicators */}
-                                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                                            {roomImages.map((_, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setCurrentImageIndex(idx)}
-                                                    className="w-10 h-8 rounded overflow-hidden border-2 hover:opacity-100 transition"
-                                                    style={{ borderColor: currentImageIndex === idx ? '#3b82f6' : 'rgba(255,255,255,0.3)', opacity: currentImageIndex === idx ? 1 : 0.6 }}
-                                                >
-                                                    <img src={roomImages[idx]} alt={`Room ${idx + 1}`} className="w-full h-full object-cover" />
-                                                </button>
-                                            ))}
+                                        {roomImageUrl ? (
+                                            <img src={roomImageUrl} alt={`Room ${roomDetails.room_number}`} className="w-full h-64 object-cover" />
+                                        ) : (
+                                            <div className="w-full h-64 flex items-center justify-center" style={{background: 'linear-gradient(135deg, #2a0a0a 0%, #1a0a2e 100%)'}}>
+                                                <span className="text-6xl font-bold" style={{color: '#ff6b6b', opacity: 0.4}}>{roomDetails.room_number}</span>
+                                            </div>
+                                        )}
+                                        <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold" style={{background: '#8b0000', color: '#fff'}}>
+                                            {roomDetails.type}
                                         </div>
                                     </div>
 
-                                    {/* Room Title and Info */}
                                     <h3 className="text-2xl font-bold mb-2" style={{ color: '#d0d0d0' }}>
-                                        {roomDetails.type} Room
+                                        {roomDetails.type} Room — {roomDetails.room_number}
                                     </h3>
                                     <p className="text-xl font-semibold mb-6" style={{ color: '#ff6b6b' }}>
-                                        ${roomDetails.price} / Night
-                                    </p>
-                                    <p className="text-sm mb-6" style={{ color: '#c0c0c0' }}>
-                                        {roomDetails.description}
+                                        ${roomPrice.toFixed(0)} / Night
                                     </p>
 
                                     {/* Room Details Grid */}
                                     <div className="space-y-3 mb-6 pb-6" style={{ borderBottomColor: 'rgba(139, 0, 0, 0.3)', borderBottomWidth: '1px' }}>
                                         <div className="flex justify-between items-center">
-                                            <span style={{ color: '#c0c0c0' }} className="text-sm">🛏️ Bed Type:</span>
-                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.bedType}</span>
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">👥 Capacity:</span>
+                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.capacity || 2} guests</span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span style={{ color: '#c0c0c0' }} className="text-sm">👥 Max Guests:</span>
-                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.maxGuests}</span>
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">🏷️ Type:</span>
+                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.type}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span style={{ color: '#c0c0c0' }} className="text-sm">📐 Room Size:</span>
-                                            <span style={{ color: '#d0d0d0' }} className="font-semibold">{roomDetails.size}</span>
+                                            <span style={{ color: '#c0c0c0' }} className="text-sm">📋 Status:</span>
+                                            <span style={{ color: roomDetails.status === 'available' ? '#86efac' : '#fca5a5' }} className="font-semibold capitalize">{roomDetails.status || 'available'}</span>
                                         </div>
                                     </div>
 
-                                    {/* Amenities */}
-                                    <h4 className="font-semibold mb-3" style={{ color: '#d0d0d0' }}>Amenities</h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {roomDetails.amenities?.map((amenity) => (
-                                            <div key={amenity} className="text-sm flex items-center" style={{ color: '#c0c0c0' }}>
-                                                <span className="mr-2" style={{ color: '#3b82f6' }}>✓</span>
-                                                {amenity}
-                                            </div>
-                                        ))}
-                                    </div>
+
 
                                     {/* Additional Info */}
                                     <div className="mt-6 p-4 rounded-lg text-sm" style={{ backgroundColor: 'rgba(139, 0, 0, 0.1)', borderColor: 'rgba(139, 0, 0, 0.3)', borderWidth: '1px' }}>
@@ -525,12 +473,12 @@ function Bookings() {
                                                     <h4 className="font-semibold mb-3 text-sm" style={{ color: '#d0d0d0' }}>Pricing Summary</h4>
                                                     <div className="space-y-2 text-xs">
                                                         <div className="flex justify-between">
-                                                            <span style={{color: '#c0c0c0'}}>Room Price (${roomDetails.price} x {nights} nights):</span>
-                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${roomDetails.price * nights}</span>
+                                                            <span style={{color: '#c0c0c0'}}>Room Price (${roomPrice} x {nights} nights):</span>
+                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${roomPrice * nights}</span>
                                                         </div>
                                                         <div className="flex justify-between">
                                                             <span style={{color: '#c0c0c0'}}>Taxes & Fees:</span>
-                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${Math.round(roomDetails.price * nights * 0.1)}</span>
+                                                            <span style={{color: '#d0d0d0'}} className="font-semibold">${Math.round(roomPrice * nights * 0.1)}</span>
                                                         </div>
                                                         <div className="flex justify-between">
                                                             <span style={{color: '#c0c0c0'}}>Promo Code:</span>
@@ -764,11 +712,33 @@ function Bookings() {
                     </div>
 
                     {/* Error Message */}
-                    {error && (
-                        <div className="mb-6 p-4 rounded-lg" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.2)', color: '#ff6b6b', border: '1px solid #ff6b6b'}}>
-                            {error}
-                        </div>
-                    )}
+    {error && (
+        <div className="mb-6 p-6 rounded-xl" style={{borderColor: '#ff6b6b', backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b', border: '2px solid #ff6b6b'}}>
+            <div className="flex items-start gap-3 mb-3">
+                <div className="text-2xl mt-0.5">⚠️</div>
+                <div>
+                    <p className="font-semibold text-lg mb-1">{error}</p>
+                    <p className="text-sm opacity-90">API: {API_URL}</p>
+                </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+                <button
+                    onClick={() => fetchBookings()}
+                    className="px-4 py-2 rounded-lg font-semibold text-white transition"
+                    style={{ backgroundColor: '#8b0000' }}
+                >
+                    🔄 Retry
+                </button>
+                <button
+                    onClick={() => navigate('/login')}
+                    className="px-4 py-2 rounded-lg font-semibold transition"
+                    style={{ color: '#ff6b6b', border: '1px solid #ff6b6b' }}
+                >
+                    Check Login
+                </button>
+            </div>
+        </div>
+    )}
 
                     {/* Loading State */}
                     {loading && (
@@ -891,7 +861,7 @@ function Bookings() {
                                             </button>
                                             {booking.status?.toLowerCase() !== 'cancelled' && (
                                                 <button
-                                                    onClick={() => handleCancelBooking(booking.id)}
+                                                    onClick={() => triggerCancelBooking(booking.id)}
                                                     className="flex-1 px-4 py-2 rounded-lg font-semibold transition-all hover:opacity-80"
                                                     style={{ color: '#ff6b6b', borderColor: '#ff6b6b', borderWidth: '2px' }}
                                                 >
@@ -913,6 +883,15 @@ function Bookings() {
                     )}
                 </div>
             </main>
+
+            <ConfirmModal 
+                isOpen={cancelModalOpen}
+                message="Guuurrgh... You want to destroy this booking...? Brrraaiiinss... it cannot be undone..."
+                onConfirm={executeCancelBooking}
+                onCancel={() => { setCancelModalOpen(false); setBookingToCancel(null); }}
+                confirmText="Grrr... Destroy"
+                cancelText="Urgh... Nevermind"
+            />
         </>
     )
 }

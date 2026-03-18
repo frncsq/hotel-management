@@ -1,4 +1,4 @@
-﻿import Header from "../components/header"
+import Header from "../components/header"
 import { useState, useEffect } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
@@ -28,7 +28,7 @@ function Home() {
     const [selectedRoom, setSelectedRoom] = useState(null)
     const [showDetailDialog, setShowDetailDialog] = useState(false)
 
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
     const navigate = useNavigate()
     const MAX_RETRIES = 3
 
@@ -46,70 +46,23 @@ function Home() {
         fetchRooms()
     }, [])
 
-    // Validate room data structure
-    const validateRoomData = (rooms) => {
-        return Array.isArray(rooms) && rooms.every(room =>
-            room.id &&
-            room.roomNumber &&
-            room.type &&
-            typeof room.price === 'number' &&
-            room.availability &&
-            Array.isArray(room.amenities)
-        )
-    }
-
-    // Fetch rooms from API with retry logic
-    const fetchRooms = async (attempt = 0) => {
+    // Fetch rooms from API
+    const fetchRooms = async () => {
         try {
             setLoading(true)
             setError("")
             setMessage("")
-
             const response = await apiClient.get('/rooms')
-
-            // Validate response structure
-            if (!response.data) {
-                throw new Error("Invalid response: no data received")
-            }
-
-            if (response.data.success && response.data.rooms) {
-                // Validate rooms data structure
-                if (validateRoomData(response.data.rooms)) {
-                    setRooms(response.data.rooms)
-                    setRetryCount(0)
-                    console.log(`Successfully fetched ${response.data.rooms.length} rooms`)
-                } else {
-                    throw new Error("Invalid room data structure received from API")
-                }
+            if (response.data.success && Array.isArray(response.data.rooms)) {
+                setRooms(response.data.rooms)
             } else if (Array.isArray(response.data)) {
-                // Handle case where API returns array directly
-                if (validateRoomData(response.data)) {
-                    setRooms(response.data)
-                    setRetryCount(0)
-                    console.log(`Successfully fetched ${response.data.length} rooms`)
-                } else {
-                    throw new Error("Invalid room data structure")
-                }
+                setRooms(response.data)
             } else {
-                throw new Error("Unexpected API response format")
+                setError("Failed to load rooms")
             }
         } catch (error) {
-            console.error(`Fetch attempt ${attempt + 1}/${MAX_RETRIES}:`, error.message)
-
-            // Retry logic
-            if (attempt < MAX_RETRIES - 1) {
-                setRetryCount(attempt + 1)
-                const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
-                setTimeout(() => fetchRooms(attempt + 1), delay)
-            } else {
-                // Max retries reached, use mock data and show error
-                console.warn("Max retries reached, using mock data")
-                setRooms(getMockRooms())
-                const errorMessage = `Failed to load rooms from server after ${MAX_RETRIES} attempts. Displaying cached data. ${error.code === 'ECONNREFUSED' ? 'Server is not responding.' : ''}`
-                setError(errorMessage)
-                setMessage(errorMessage)
-                setMessageType('error')
-            }
+            console.error('Fetch rooms error:', error.message)
+            setError("Unable to connect to server. Please make sure the backend is running.")
         } finally {
             setLoading(false)
         }
@@ -121,46 +74,26 @@ function Home() {
         fetchRooms()
     }
 
-    // Mock data for demonstration
-    const getMockRooms = () => [
-        { id: 1, roomNumber: "101", type: "Single", price: 80, availability: "available", amenities: ["WiFi", "AC", "TV"] },
-        { id: 2, roomNumber: "102", type: "Double", price: 120, availability: "available", amenities: ["WiFi", "AC", "TV", "Minibar"] },
-        { id: 3, roomNumber: "103", type: "Suite", price: 250, availability: "booked", amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi"] },
-        { id: 4, roomNumber: "201", type: "Single", price: 85, availability: "available", amenities: ["WiFi", "AC", "TV"] },
-        { id: 5, roomNumber: "202", type: "Double", price: 150, availability: "available", amenities: ["WiFi", "AC", "TV", "Balcony"] },
-        { id: 6, roomNumber: "203", type: "Suite", price: 300, availability: "available", amenities: ["WiFi", "AC", "TV", "Minibar", "Jacuzzi", "Balcony"] },
-    ]
 
-    // Filter rooms based on search and filters
+    // Filter rooms based on search and filters (uses DB field names)
     const filteredRooms = rooms.filter((room) => {
-        // Search term filter
-        if (searchTerm && !room.roomNumber.includes(searchTerm) && !room.type.toLowerCase().includes(searchTerm.toLowerCase())) {
+        const roomNum = String(room.room_number || '')
+        const roomType = String(room.type || '')
+        if (searchTerm && !roomNum.toLowerCase().includes(searchTerm.toLowerCase()) && !roomType.toLowerCase().includes(searchTerm.toLowerCase())) {
             return false
         }
-
-        // Room type filter
-        if (filters.roomType !== "all" && room.type !== filters.roomType) {
+        if (filters.roomType !== "all" && roomType !== filters.roomType) {
             return false
         }
-
-        // Price range filter
-        if (room.price < filters.priceRange[0] || room.price > filters.priceRange[1]) {
+        const price = parseFloat(room.price || 0)
+        if (price < filters.priceRange[0] || price > filters.priceRange[1]) {
             return false
         }
-
-        // Availability filter
-        if (filters.availability !== "all" && room.availability !== filters.availability) {
-            return false
+        if (filters.availability !== "all") {
+            const isAvailable = room.status === 'available'
+            if (filters.availability === 'available' && !isAvailable) return false
+            if (filters.availability === 'booked' && isAvailable) return false
         }
-
-        // Amenities filter
-        if (filters.amenities.length > 0) {
-            const hasAllAmenities = filters.amenities.every((amenity) =>
-                room.amenities?.includes(amenity)
-            )
-            if (!hasAllAmenities) return false
-        }
-
         return true
     })
 
@@ -193,27 +126,12 @@ function Home() {
     const handleBookRoom = async (roomId) => {
         try {
             const room = rooms.find(r => r.id === roomId)
-            
-            if (!room) {
-                setMessage('Room not found')
-                setMessageType('error')
-                return
-            }
-
-            if (room.availability !== 'available') {
-                setMessage('This room is no longer available')
-                setMessageType('error')
-                return
-            }
-
+            if (!room) { setMessage('Room not found'); setMessageType('error'); return }
+            if (room.status !== 'available') { setMessage('This room is not available'); setMessageType('error'); return }
             setMessage('Redirecting to booking page...')
             setMessageType('success')
-            
-            setTimeout(() => {
-                navigate(`/bookings?roomId=${roomId}`)
-            }, 300)
+            setTimeout(() => navigate(`/bookings?roomId=${roomId}`), 300)
         } catch (error) {
-            console.error('Booking error:', error)
             setMessage('Error processing booking. Please try again.')
             setMessageType('error')
         }
@@ -462,145 +380,72 @@ function Home() {
                                 </p>
                             </div>
 
-                            {/* Room Grid */}
                             {filteredRooms.length === 0 ? (
                                 <div className="rounded-2xl border-2 border-dashed px-8 py-16 text-center shadow-md animate-slideDown"
                                     style={{borderColor: 'rgba(139, 0, 0, 0.4)', backgroundColor: 'rgba(20, 20, 40, 0.8)'}}>
                                     <p className="text-2xl font-bold mb-2" style={{color: '#ff6b6b'}}>No Rooms Found</p>
-                                    <p className="text-sm mb-6" style={{color: 'rgba(255, 107, 107, 0.7)'}}>
-                                        Try adjusting your filters or search criteria
-                                    </p>
-                                    <button
-                                        onClick={resetFilters}
+                                    <p className="text-sm mb-6" style={{color: 'rgba(255, 107, 107, 0.7)'}}>Try adjusting your filters or search criteria</p>
+                                    <button onClick={resetFilters}
                                         className="inline-flex items-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-                                        style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)', color: '#fff'}}
-                                    >
+                                        style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)'}}>
                                         Reset Filters
                                     </button>
                                 </div>
                             ) : (
                                 <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
-                                    {filteredRooms.map((room, index) => (
-                                        <div
-                                            key={room.id}
+                                    {filteredRooms.map((room, index) => {
+                                        const isAvailable = room.status === 'available'
+                                        const backendBase = import.meta.env.VITE_API_URL
+                                        const imageUrl = room.image_url ? `${backendBase}${room.image_url}` : null
+                                        return (
+                                        <div key={room.id}
                                             className="group flex flex-col rounded-2xl border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 card-hover animate-slideInRight"
-                                            style={{
-                                                borderColor: 'rgba(139, 0, 0, 0.6)',
-                                                backgroundColor: 'rgba(20, 20, 40, 0.9)',
-                                                animationDelay: `${index * 50}ms`
-                                            }}>
-                                            {/* Image with Badge Overlay */}
-                                            <div className="relative h-56 overflow-hidden bg-gradient-to-br from-red-900 to-red-950">
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <span className="text-6xl font-bold text-center" style={{color: '#ff6b6b', textShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'}}>
-                                                        {room.roomNumber}
-                                                    </span>
+                                            style={{ borderColor: 'rgba(139, 0, 0, 0.6)', backgroundColor: 'rgba(20, 20, 40, 0.9)', animationDelay: `${index * 50}ms` }}>
+
+                                            {/* Room Image */}
+                                            <div className="relative h-52 overflow-hidden" style={{background: 'linear-gradient(135deg, #2a0a0a 0%, #1a0a2e 100%)'}}>
+                                                {imageUrl ? (
+                                                    <img src={imageUrl} alt={`Room ${room.room_number}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className="text-6xl font-bold" style={{color: '#ff6b6b', opacity: 0.5}}>{room.room_number}</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold" style={{background: '#8b0000', color: '#fff'}}>
+                                                    {room.type}
                                                 </div>
-                                                {/* Badge on top */}
-                                                <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg" 
-                                                    style={{backgroundColor: '#ff6b6b', color: '#fff'}}>
-                                                    â­ Premium
+                                                <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${isAvailable ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                                                    {isAvailable ? '✓ Available' : '✗ Occupied'}
                                                 </div>
-                                                {/* Heart icon */}
-                                                <button className="absolute top-4 right-4 text-xl bg-white rounded-full p-2 hover:scale-110 transition-transform duration-300 shadow-lg opacity-0 group-hover:opacity-100"
-                                                    style={{color: '#ff6b6b'}}>
-                                                    â™¡
-                                                </button>
                                             </div>
 
-                                            {/* Content Section */}
-                                            <div className="flex flex-1 flex-col p-6">
-                                                {/* Title and Type Badge */}
-                                                <div className="mb-4">
-                                                    <h3 className="text-lg font-bold mb-2" style={{color: '#ff6b6b'}}>
-                                                        Room {room.roomNumber}
-                                                    </h3>
-                                                    <div className="inline-flex items-center gap-2">
-                                                        <span className="text-sm font-semibold" style={{color: '#ff6b6b'}}>★★★★★</span>
-                                                        <span className="text-xs px-2.5 py-1 rounded-full font-semibold" 
-                                                            style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}>
-                                                            {room.type}
-                                                        </span>
+                                            {/* Content */}
+                                            <div className="flex flex-1 flex-col p-5">
+                                                <h3 className="text-lg font-bold mb-1" style={{color: '#ff6b6b'}}>Room {room.room_number}</h3>
+                                                <p className="text-xs mb-3" style={{color: '#808080'}}>Capacity: {room.capacity} guests</p>
+
+                                                <div className="mt-auto">
+                                                    <div className="flex items-baseline gap-2 mb-4 py-3 px-3 rounded-lg" style={{background: 'rgba(139,0,0,0.15)', borderLeft: '3px solid #ff6b6b'}}>
+                                                        <span className="text-3xl font-bold" style={{color: '#ff6b6b'}}>${parseFloat(room.price).toFixed(0)}</span>
+                                                        <span className="text-sm" style={{color: 'rgba(255,107,107,0.6)'}}>per night</span>
                                                     </div>
-                                                </div>
-
-                                                {/* Description */}
-                                                <p className="text-sm mb-4 leading-relaxed" style={{color: 'rgba(192, 192, 192, 0.8)'}}>
-                                                    Luxuriously appointed with premium amenities and thoughtful design details.
-                                                </p>
-
-                                                {/* Amenities/Features */}
-                                                <div className="mb-4">
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {room.amenities?.slice(0, 3).map((amenity) => (
-                                                            <span
-                                                                key={amenity}
-                                                                className="text-xs font-medium rounded-full px-3 py-1 inline-flex items-center gap-1 transition-all duration-200"
-                                                                style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}
-                                                            >
-                                                                âœ“ {amenity}
-                                                            </span>
-                                                        ))}
+                                                    <div className="flex gap-3">
+                                                        <button onClick={() => handleBookRoom(room.id)} disabled={!isAvailable}
+                                                            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            style={{ background: isAvailable ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' : 'rgba(107,114,128,0.4)', color: '#fff' }}>
+                                                            {isAvailable ? 'Book Now' : 'Unavailable'}
+                                                        </button>
+                                                        <button onClick={() => handleRoomDetails(room)}
+                                                            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all border-2"
+                                                            style={{ borderColor: '#ff6b6b', color: '#ff6b6b', background: 'rgba(139,0,0,0.1)' }}>
+                                                            Details
+                                                        </button>
                                                     </div>
-                                                </div>
-
-                                                {/* Price Section */}
-                                                <div className="mb-5 py-4 px-4 rounded-lg" 
-                                                    style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', borderLeft: '3px solid #ff6b6b'}}>
-                                                    <div className="flex items-baseline gap-2 flex-wrap mb-1">
-                                                        <span className="text-3xl font-bold" style={{color: '#ff6b6b'}}>
-                                                            ${room.price}
-                                                        </span>
-                                                        <span className="text-sm" style={{color: 'rgba(255, 107, 107, 0.6)'}}>
-                                                            per night
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-xs opacity-60" style={{color: 'rgba(255, 107, 107, 0.8)'}}>
-                                                        Save up to ${Math.round(room.price * 0.2)} with longer stays
-                                                    </span>
-                                                </div>
-
-                                                {/* Availability Status */}
-                                                <div className="mb-5">
-                                                    <div className="text-xs font-semibold px-3 py-2 rounded-lg text-center transition-all"
-                                                        style={{
-                                                            backgroundColor: room.availability === "available" ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                            color: room.availability === "available" ? '#86efac' : '#fca5a5'
-                                                        }}>
-                                                        {room.availability === "available" ? "âœ“ Available" : "âœ• Unavailable"}
-                                                    </div>
-                                                </div>
-
-                                                {/* Action Buttons */}
-                                                <div className="flex gap-3 mt-auto">
-                                                    <button
-                                                        onClick={() => handleBookRoom(room.id)}
-                                                        disabled={room.availability !== "available"}
-                                                        className={`flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:scale-95`}
-                                                        style={{
-                                                            background: room.availability === "available" 
-                                                                ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' 
-                                                                : 'rgba(107, 114, 128, 0.5)',
-                                                            color: room.availability === "available" ? '#fff' : '#9ca3af'
-                                                        }}
-                                                    >
-                                                        {room.availability === "available" ? "Book Now" : "Unavailable"}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleRoomDetails(room)}
-                                                        className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-300 border-2 hover:shadow-lg transform hover:-translate-y-0.5 active:scale-95"
-                                                        style={{
-                                                            borderColor: '#ff6b6b',
-                                                            color: '#ff6b6b',
-                                                            backgroundColor: 'rgba(139, 0, 0, 0.15)'
-                                                        }}
-                                                    >
-                                                        Details
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -622,12 +467,16 @@ function Home() {
                         </button>
 
                         {/* Header Section */}
-                        <div
-                            className="h-40 flex items-center justify-center relative"
-                            style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 50%, #993333 100%)'}}>
-                            <div className="text-center">
-                                <p className="text-sm uppercase tracking-wide" style={{color: '#fff'}}>Room</p>
-                                <p className="text-6xl font-bold" style={{color: '#fff'}}>{selectedRoom.roomNumber}</p>
+                        <div className="relative h-48 overflow-hidden" style={{background: 'linear-gradient(135deg, #4a0000 0%, #1a0a2e 100%)'}}>
+                            {selectedRoom.image_url ? (
+                                <img src={`${import.meta.env.VITE_API_URL}${selectedRoom.image_url}`} alt={`Room ${selectedRoom.room_number}`} className="w-full h-full object-cover opacity-80" />
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <p className="text-7xl font-bold" style={{color: '#ff6b6b', opacity: 0.5}}>{selectedRoom.room_number}</p>
+                                </div>
+                            )}
+                            <div className="absolute bottom-3 left-4">
+                                <span className="px-3 py-1 rounded-full text-xs font-bold" style={{background: '#8b0000', color: '#fff'}}>{selectedRoom.type}</span>
                             </div>
                         </div>
 
@@ -636,33 +485,26 @@ function Home() {
                             {/* Title and Price */}
                             <div className="mb-6 flex items-start justify-between">
                                 <div>
-                                    <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-3" style={{backgroundColor: 'rgba(139, 0, 0, 0.15)', color: '#ff6b6b'}}>
-                                        {selectedRoom.type}
-                                    </div>
-                                    <h1 className="text-3xl font-bold" style={{color: '#ff6b6b'}}>
-                                        {selectedRoom.type} Room
+                                    <h1 className="text-2xl font-bold" style={{color: '#ff6b6b'}}>
+                                        Room {selectedRoom.room_number}
                                     </h1>
+                                    <p className="text-sm mt-1" style={{color: '#a0a0a0'}}>Capacity: {selectedRoom.capacity} guests</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-4xl font-bold" style={{color: '#ff6b6b'}}>
-                                        ${selectedRoom.price}
-                                    </p>
+                                    <p className="text-4xl font-bold" style={{color: '#ff6b6b'}}>${parseFloat(selectedRoom.price || 0).toFixed(0)}</p>
                                     <p className="text-sm" style={{color: 'rgba(255, 107, 107, 0.7)'}}>per night</p>
                                 </div>
                             </div>
 
                             {/* Availability */}
                             <div className="mb-6">
-                                <span
-                                    className="inline-flex items-center rounded-full px-3 py-2 text-xs font-medium"
+                                <span className="inline-flex items-center rounded-full px-3 py-2 text-xs font-medium"
                                     style={{
-                                        backgroundColor: selectedRoom.availability === "available" ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                        color: selectedRoom.availability === "available" ? '#86efac' : '#fca5a5'
+                                        backgroundColor: selectedRoom.status === 'available' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
+                                        color: selectedRoom.status === 'available' ? '#86efac' : '#fca5a5'
                                     }}>
-                                    <span className="mr-2 h-2 w-2 rounded-full" style={{
-                                        backgroundColor: selectedRoom.availability === "available" ? '#86efac' : '#fca5a5'
-                                    }} />
-                                    {selectedRoom.availability === "available" ? "Available for Booking" : "Currently Booked"}
+                                    <span className="mr-2 h-2 w-2 rounded-full" style={{backgroundColor: selectedRoom.status === 'available' ? '#86efac' : '#fca5a5'}} />
+                                    {selectedRoom.status === 'available' ? 'Available for Booking' : 'Currently ' + (selectedRoom.status || 'Unavailable')}
                                 </span>
                             </div>
 
@@ -687,18 +529,15 @@ function Home() {
                         {/* Action Buttons */}
                         <div className="flex gap-3 p-6 border-t" style={{borderTopColor: 'rgba(139, 0, 0, 0.3)'}}>
                             <button
-                                onClick={() => {
-                                    setShowDetailDialog(false)
-                                    handleBookRoom(selectedRoom.id)
-                                }}
-                                disabled={selectedRoom.availability !== "available"}
-                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                                onClick={() => { setShowDetailDialog(false); handleBookRoom(selectedRoom.id) }}
+                                disabled={selectedRoom.status !== 'available'}
+                                className="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{
-                                    background: selectedRoom.availability === "available" ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' : 'rgba(107, 114, 128, 0.5)',
-                                    color: selectedRoom.availability === "available" ? '#fff' : '#9ca3af'
+                                    background: selectedRoom.status === 'available' ? 'linear-gradient(135deg, #ff6b6b 0%, #cc5555 100%)' : 'rgba(107,114,128,0.5)',
+                                    color: '#fff'
                                 }}
                             >
-                                {selectedRoom.availability === "available" ? "Book This Room" : "Room Unavailable"}
+                                {selectedRoom.status === 'available' ? 'Book This Room' : 'Room Unavailable'}
                             </button>
                             <button
                                 onClick={() => setShowDetailDialog(false)}
